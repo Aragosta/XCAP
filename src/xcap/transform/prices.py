@@ -255,14 +255,16 @@ def build_dividends(ledger: Ledger) -> dict:
 
 
 def build_all(ledger: Ledger, start_date: str = START_DATE) -> dict:
-    manifest = {
-        "start_date": start_date,
-        "datasets": {
-            "splits": build_splits(ledger),
-            "dividends": build_dividends(ledger),
-            "eod": build_eod(ledger, start_date),
-        },
-    }
+    datasets = {"splits": build_splits(ledger)}
+    # Dividends are an optional stage: skip cleanly when they have not been
+    # downloaded rather than emitting a partial file that looks complete.
+    if ledger.rows("dividends", status="ok"):
+        datasets["dividends"] = build_dividends(ledger)
+    else:
+        log.warning("no dividends fetched; skipping dividends.parquet")
+        (PARQUET_DIR / "dividends.parquet").unlink(missing_ok=True)
+    datasets["eod"] = build_eod(ledger, start_date)
+    manifest = {"start_date": start_date, "datasets": datasets}
     CATALOG_DIR.mkdir(parents=True, exist_ok=True)
     (CATALOG_DIR / "phase1_manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest

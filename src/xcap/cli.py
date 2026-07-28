@@ -5,6 +5,7 @@
     python -m xcap.cli phase0-qa        # bias + integrity gate
     python -m xcap.cli probe-history    # measure real EOD history depth on a sample
     python -m xcap.cli probe-delisting  # test a start year for survivorship-bias safety
+    python -m xcap.cli coverage         # write PROGRESS.md: downloaded vs remaining
     python -m xcap.cli status           # ledger and budget summary
 """
 
@@ -21,11 +22,13 @@ from .eodhd.budget import Budget
 from .corpactions import build_adjustments, reconcile
 from .jobs.phase0_universe import fetch_universe
 from .jobs.phase1_prices import fetch_prices
+from .jobs.phase2_reference import fetch_reference
 from .jobs.probe_delisting import probe_delisting, verdict
 from .jobs.probe_history import probe_history
 from .ledger import Ledger
 from .universe import START_DATE
 from .qa.phase0_checks import format_report, run_checks
+from .qa.coverage import write_report
 from .qa.phase1_checks import format_report as fmt1, run_checks as checks1
 from .transform.prices import build_all as build_prices
 from .transform.universe import build_all
@@ -198,6 +201,29 @@ def cmd_phase1_qa(args: argparse.Namespace) -> int:
     return 1 if any(c.level == "FAIL" for c in checks) else 0
 
 
+def cmd_phase2_fetch(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    ledger = Ledger()
+    try:
+        stats = asyncio.run(fetch_reference(cfg, ledger, which=args.which))
+    finally:
+        print(f"\ncalls spent today: {ledger.spent_today(Budget.gmt_day()):,} "
+              f"/ {cfg.daily_call_budget:,}")
+        ledger.close()
+    print(json.dumps(stats, indent=2))
+    return 0
+
+
+def cmd_coverage(args: argparse.Namespace) -> int:
+    ledger = Ledger()
+    try:
+        _, md = write_report(ledger)
+    finally:
+        ledger.close()
+    print(md)
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     ledger = Ledger()
     try:
@@ -274,6 +300,16 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("phase1-qa", help="run the Phase 1 quality gate")
     p.set_defaults(func=cmd_phase1_qa)
+
+    p = sub.add_parser("phase2-fetch", help="fetch reference and non-equity datasets")
+    p.add_argument("--which", nargs="+",
+                   default=["indices", "exchange-details", "earnings", "macro", "noneq-eod"],
+                   choices=["indices", "exchange-details", "earnings", "macro", "noneq-eod"])
+    p.set_defaults(func=cmd_phase2_fetch)
+
+    p = sub.add_parser("coverage",
+                       help="write data/catalog/PROGRESS.md: what is downloaded and what remains")
+    p.set_defaults(func=cmd_coverage)
 
     p = sub.add_parser("status", help="ledger and budget summary")
     p.set_defaults(func=cmd_status)

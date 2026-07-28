@@ -92,17 +92,36 @@ def _connect() -> duckdb.DuckDBPyConnection:
     return con
 
 
+#: Used when dividends have not been downloaded yet. price_factor then equals
+#: split_factor, i.e. price-return only. Never silently: build_adjustments
+#: reports dividends_included=False so downstream code and the QA gate can see
+#: that total-return reconstruction is not yet possible.
+_NO_DIVIDENDS_SQL = """
+div_f AS (
+    SELECT NULL::INTEGER AS security_id, NULL::DATE AS date, 1.0 AS f WHERE FALSE
+),"""
+
+
 def build_adjustments() -> dict:
     """Compute and persist split and total-return factors for every bar."""
     out = PARQUET_DIR / "adjustments"
     if out.exists():
         shutil.rmtree(out)
 
+    dividends_path = PARQUET_DIR / "dividends.parquet"
+    has_dividends = dividends_path.exists()
+
     sql = _FACTOR_SQL.format(
         eod=PARQUET_DIR / "eod",
         splits=PARQUET_DIR / "splits.parquet",
-        dividends=PARQUET_DIR / "dividends.parquet",
+        dividends=dividends_path,
     )
+    if not has_dividends:
+        log.warning("dividends.parquet absent: factors are SPLIT-ONLY "
+                    "(price return, not total return)")
+        start = sql.index("div_f AS (")
+        end = sql.index("events AS (")
+        sql = sql[:start] + _NO_DIVIDENDS_SQL.strip() + "\n" + sql[end:]
     con = _connect()
     con.execute(f"""
         COPY ({sql} ORDER BY date, security_id) TO '{out}'
@@ -115,7 +134,9 @@ def build_adjustments() -> dict:
 
     files = sorted(out.rglob("*.parquet"))
     return {"path": str(out.relative_to(DATA_DIR)), "rows": rows,
-            "files": len(files), "bytes": sum(f.stat().st_size for f in files)}
+            "files": len(files), "bytes": sum(f.stat().st_size for f in files),
+            "dividends_included": has_dividends,
+            "factor_meaning": "total return" if has_dividends else "price return (split-only)"}
 
 
 def reconcile(tolerance: float = 0.01, sample_securities: int | None = None) -> dict:

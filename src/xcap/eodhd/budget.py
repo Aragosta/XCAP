@@ -35,6 +35,9 @@ ENDPOINT_COST = {
     "probe-macro-indicator": 10, "probe-options": 10,
     "probe-news": 5, "probe-sentiments": 5, "probe-intraday": 5,
     "probe-technical-splitadj": 5,
+    # Phase 2 reference datasets.
+    "eod-nonequity": 1, "exchange-details": 1, "calendar-earnings": 1,
+    "macro-indicator": 10, "fundamentals-index": 10,
 }
 
 

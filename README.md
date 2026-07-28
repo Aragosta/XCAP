@@ -45,6 +45,29 @@ Result as of the 2026-07-28 snapshot: **322,006 securities across 70 exchanges,
 Phase 0 output is frozen. Every later phase iterates `securities.parquet`, so if
 the universe shifts mid-extraction, coverage accounting stops meaning anything.
 
+## History depth (measured, not claimed)
+
+```bash
+.venv/bin/python -m xcap.cli probe-history --exchange US   # 400 calls
+```
+
+Stratified sample of 400 US securities, all of which returned data. Deepest
+history observed is **1962-01-02** (long-lived NYSE names: IBM, GE, KO, XOM,
+JNJ). But the *median* US common stock starts around **2013**, with a median of
+133 months of history.
+
+| stratum | earliest | median first year |
+|---|---|---|
+| Common Stock / active | 1994 | 2013 |
+| Common Stock / delisted | 1993 | 2010 |
+| ETF / active | 2000 | 2024 |
+| FUND / active | 1986 | 2009 |
+| Mutual Fund / active | 2021 | 2025 |
+
+Caveat: this cannot distinguish "the company IPO'd in 2013" from "the vendor
+only backfilled to 2013". Separating those requires comparing against known
+listing dates.
+
 ## Datasets
 
 | File | Rows | Notes |

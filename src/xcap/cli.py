@@ -3,6 +3,7 @@
     python -m xcap.cli phase0-fetch     # pull exchange + ticker lists (active AND delisted)
     python -m xcap.cli phase0-build     # raw archive -> parquet (no network)
     python -m xcap.cli phase0-qa        # bias + integrity gate
+    python -m xcap.cli probe-history    # measure real EOD history depth on a sample
     python -m xcap.cli status           # ledger and budget summary
 """
 
@@ -17,6 +18,7 @@ import sys
 from .config import ensure_dirs, load_config
 from .eodhd.budget import Budget
 from .jobs.phase0_universe import fetch_universe
+from .jobs.probe_history import probe_history
 from .ledger import Ledger
 from .qa.phase0_checks import format_report, run_checks
 from .transform.universe import build_all
@@ -71,6 +73,31 @@ def cmd_phase0_qa(args: argparse.Namespace) -> int:
     return 1 if any(c.level == "FAIL" for c in checks) else 0
 
 
+def cmd_probe_history(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    ledger = Ledger()
+    try:
+        report = asyncio.run(probe_history(
+            cfg, ledger, exchange=args.exchange,
+            per_stratum=args.per_stratum, seed=args.seed,
+        ))
+    finally:
+        ledger.close()
+    print(f"\nEOD history depth — {report['exchange']} "
+          f"(sampled {report['sampled']}, with data {report['with_data']}, "
+          f"no data {report['no_data']})\n")
+    width = max(len(k) for k in report["by_stratum"]) if report["by_stratum"] else 10
+    print(f"  {'stratum'.ljust(width)}    n  earliest   p25  median  med.months")
+    for name, s in report["by_stratum"].items():
+        print(f"  {name.ljust(width)} {s['n']:>4}  {s['earliest']:>8}  "
+              f"{s['p25_first_year']:>4}  {s['median_first_year']:>6}  {s['median_months']:>10}")
+    print("\n  first observation by decade")
+    for decade, n in report["first_year_histogram"].items():
+        print(f"    {decade}  {'#' * min(n, 60)} {n}")
+    print()
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     ledger = Ledger()
     try:
@@ -110,6 +137,12 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("phase0-qa", help="run the Phase 0 quality gate")
     p.set_defaults(func=cmd_phase0_qa)
+
+    p = sub.add_parser("probe-history", help="measure real EOD history depth on a sample")
+    p.add_argument("--exchange", default="US")
+    p.add_argument("--per-stratum", type=int, default=40)
+    p.add_argument("--seed", type=int, default=7)
+    p.set_defaults(func=cmd_probe_history)
 
     p = sub.add_parser("status", help="ledger and budget summary")
     p.set_defaults(func=cmd_status)

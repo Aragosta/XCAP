@@ -1,5 +1,9 @@
 # XCAP — EODHD archival extraction
 
+> **Design and goals: [docs/DATA_RETRIEVAL.md](docs/DATA_RETRIEVAL.md)** — why the pipeline
+> is built this way, every bias control and its evidence, and the operating
+> procedure. Live download state: [`data/catalog/PROGRESS.md`](data/catalog/PROGRESS.md).
+
 One-shot extraction of EODHD financial data into analysis-ready parquet, built
 on the assumption that **the subscription gets cancelled and there is no second
 pull**. Every design decision follows from that.

@@ -47,14 +47,6 @@ class VerifyResult:
         return not self.missing and not self.corrupt
 
 
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as fh:
-        for block in iter(lambda: fh.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
-
-
 def verify_raw(ledger: Ledger, root: Path = RAW_DIR, *,
                full: bool = True, progress_every: int = 5000) -> VerifyResult:
     """Check every archived response against the checksum recorded at fetch time.

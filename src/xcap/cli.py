@@ -26,6 +26,7 @@ from .jobs.phase0_universe import fetch_universe
 from .jobs.phase1_prices import fetch_prices
 from .jobs.phase2_reference import fetch_reference
 from .jobs.probe_delisting import probe_delisting, verdict
+from .jobs.probe_entitlements import probe_entitlements
 from .jobs.probe_history import probe_history
 from .ledger import Ledger
 from .plan import report as plan_report
@@ -269,6 +270,26 @@ def cmd_backup(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_probe_entitlements(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    ledger = Ledger()
+    try:
+        report = asyncio.run(probe_entitlements(cfg, ledger))
+    finally:
+        ledger.close()
+    print(f"\nEndpoint entitlements ({report['accessible']}/{report['total']} accessible)\n")
+    width = max(len(r["endpoint"]) for r in report["probes"])
+    for r in report["probes"]:
+        mark = "ok " if r["accessible"] else "NO "
+        print(f"  [{mark}] {r['endpoint'].ljust(width)}  {r['status']:<12} {r['shape'][:70]}")
+    print()
+    for r in report["probes"]:
+        if not r["accessible"]:
+            print(f"  inaccessible: {r['endpoint']} -- {r['why']}")
+    print()
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     ledger = Ledger()
     try:
@@ -360,6 +381,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--split-by-venue", action="store_true",
                    help="break equity blocks into whole per-venue blocks")
     p.set_defaults(func=cmd_plan)
+
+    p = sub.add_parser("probe-entitlements",
+                       help="test which endpoints this token can actually reach")
+    p.set_defaults(func=cmd_probe_entitlements)
 
     p = sub.add_parser("verify", help="check the raw archive against ledger checksums")
     p.add_argument("--fast", action="store_true",

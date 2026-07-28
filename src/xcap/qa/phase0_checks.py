@@ -115,7 +115,11 @@ def run_checks(ledger: Ledger) -> list[Check]:
                         f"{len(empty_lists)} exchange lists returned no rows: "
                         f"{', '.join(empty_lists[:10])}" if empty_lists else "none"))
 
-    failures = ledger.failures()
+    # Scope to Phase 0's own endpoints. Entitlement probes deliberately hit
+    # endpoints the plan may not cover, so their 403s and 404s are findings
+    # rather than faults and belong in the entitlements report, not here.
+    phase0_endpoints = ("exchanges-list", "exchange-symbol-list")
+    failures = [r for r in ledger.failures() if r["endpoint"] in phase0_endpoints]
     failed_names = ", ".join(f"{r['endpoint']}/{r['key']}" for r in failures[:10])
     checks.append(Check("fetch failures", "PASS" if not failures else "FAIL",
                         f"{len(failures)} unrecovered requests: {failed_names}"

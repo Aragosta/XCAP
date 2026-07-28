@@ -115,13 +115,6 @@ class Ledger:
         )
         self.conn.commit()
 
-    def successful_keys(self, endpoint: str) -> list[str]:
-        cur = self.conn.execute(
-            "SELECT key FROM requests WHERE endpoint=? AND status='ok' ORDER BY key",
-            (endpoint,),
-        )
-        return [r["key"] for r in cur.fetchall()]
-
     def rows(self, endpoint: str, status: str | None = None) -> list[sqlite3.Row]:
         if status:
             cur = self.conn.execute(

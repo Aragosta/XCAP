@@ -21,13 +21,13 @@ import duckdb
 from .config import PARQUET_DIR, load_config
 from .eodhd.budget import ENDPOINT_COST, Budget
 from .jobs.phase2_reference import (
-    INDEX_PREFIXES, INDEX_WHITELIST, MACRO_COUNTRIES, MACRO_INDICATORS,
+    INDEX_WHITELIST, MACRO_COUNTRIES, MACRO_INDICATORS,
     NONEQUITY_EXCHANGES, EARNINGS_START,
 )
 from .ledger import Ledger
 from .universe import select
 
-from datetime import date, timedelta
+from datetime import date
 
 
 @dataclass

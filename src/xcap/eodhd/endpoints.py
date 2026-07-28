@@ -14,6 +14,32 @@ def exchanges_list() -> RequestSpec:
     return RequestSpec(endpoint="exchanges-list", path="/exchanges-list/", key="ALL")
 
 
+def eod(ticker: str) -> RequestSpec:
+    """Full daily OHLCV history for one security. 1 call.
+
+    Deliberately unbounded: a date-limited request costs the same single call,
+    so archiving everything keeps the start-year decision reversible. The date
+    floor is applied when building parquet, not when fetching.
+
+    OHLC values are raw — adjusted for neither splits nor dividends. The vendor's
+    adjusted_close is retained only so xcap.corpactions can reconcile against it.
+    """
+    return RequestSpec(endpoint="eod", path=f"/eod/{ticker}", key=ticker,
+                       params={"period": "d", "order": "a"})
+
+
+def splits(ticker: str) -> RequestSpec:
+    """Split history. 1 call. Required to rebuild adjustment factors locally."""
+    return RequestSpec(endpoint="splits", path=f"/splits/{ticker}", key=ticker,
+                       params={"from": "1900-01-01"})
+
+
+def dividends(ticker: str) -> RequestSpec:
+    """Dividend history. 1 call. Ex-dates plus declaration/record/payment dates."""
+    return RequestSpec(endpoint="dividends", path=f"/div/{ticker}", key=ticker,
+                       params={"from": "1900-01-01"})
+
+
 def exchange_symbol_list(exchange_code: str, *, delisted: bool = False) -> RequestSpec:
     """Tickers for one exchange. 1 call.
 

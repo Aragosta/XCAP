@@ -18,11 +18,16 @@ import sys
 
 from .config import ensure_dirs, load_config
 from .eodhd.budget import Budget
+from .corpactions import build_adjustments, reconcile
 from .jobs.phase0_universe import fetch_universe
+from .jobs.phase1_prices import fetch_prices
 from .jobs.probe_delisting import probe_delisting, verdict
 from .jobs.probe_history import probe_history
 from .ledger import Ledger
+from .universe import START_DATE
 from .qa.phase0_checks import format_report, run_checks
+from .qa.phase1_checks import format_report as fmt1, run_checks as checks1
+from .transform.prices import build_all as build_prices
 from .transform.universe import build_all
 
 
@@ -125,6 +130,74 @@ def cmd_probe_delisting(args: argparse.Namespace) -> int:
     return 1 if any(verdict(report, s)[0] == "FAIL" for s in args.start_years) else 0
 
 
+def cmd_phase1_fetch(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    ledger = Ledger()
+    print(f"token {cfg.redacted_token} | budget {cfg.daily_call_budget:,}/day | "
+          f"{cfg.rate_per_min} req/min | concurrency {cfg.concurrency}")
+    try:
+        stats = asyncio.run(fetch_prices(
+            cfg, ledger, which=args.endpoints, limit=args.limit,
+            seed_sample=args.sample_seed,
+        ))
+    finally:
+        print(f"\ncalls spent today: {ledger.spent_today(Budget.gmt_day()):,} "
+              f"/ {cfg.daily_call_budget:,}")
+        ledger.close()
+    print(json.dumps(stats, indent=2))
+    if stats["budget_exhausted"]:
+        print("\nDaily budget exhausted. Re-run after midnight GMT; the ledger "
+              "resumes without re-spending on what is already fetched.")
+    return 0
+
+
+def cmd_phase1_build(args: argparse.Namespace) -> int:
+    ledger = Ledger()
+    try:
+        manifest = build_prices(ledger, start_date=args.start_date)
+    finally:
+        ledger.close()
+    print(json.dumps(manifest, indent=2))
+    return 0
+
+
+def cmd_phase1_adjust(args: argparse.Namespace) -> int:
+    print(json.dumps(build_adjustments(), indent=2))
+    return 0
+
+
+def cmd_phase1_reconcile(args: argparse.Namespace) -> int:
+    report = reconcile(tolerance=args.tolerance, sample_securities=args.sample)
+    print(f"\nAdjustment reconciliation (tolerance {report['tolerance']:.1%})\n")
+    print(f"  bars compared          {report['bars_compared']:,}")
+    print(f"  within tolerance       {report['within_tolerance']:,} "
+          f"({report['pct_within']:.3f}%)")
+    print(f"  outside tolerance      {report['outside_tolerance']:,}")
+    print(f"  median relative error  {report['median_rel_err']:.2e}")
+    print(f"  p99 relative error     {report['p99_rel_err']:.2e}")
+    print(f"  securities             {report['securities']:,} "
+          f"({report['securities_with_mismatch']:,} with mismatches)")
+    if report["worst_securities"]:
+        print("\n  worst securities (security_id, bad bars / bars, max err)")
+        for w in report["worst_securities"][:10]:
+            print(f"    {w['security_id']:>7}  {w['bad_bars']:>6}/{w['bars']:<6} "
+                  f"{w['max_rel_err']:.3f}")
+    print()
+    return 0
+
+
+def cmd_phase1_qa(args: argparse.Namespace) -> int:
+    ledger = Ledger()
+    try:
+        checks = checks1(ledger)
+    finally:
+        ledger.close()
+    print("\nPhase 1 quality gate\n")
+    print(fmt1(checks))
+    print()
+    return 1 if any(c.level == "FAIL" for c in checks) else 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     ledger = Ledger()
     try:
@@ -177,6 +250,30 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--seed", type=int, default=11)
     p.add_argument("--start-years", type=int, nargs="+", default=[1995, 2000, 2005])
     p.set_defaults(func=cmd_probe_delisting)
+
+    p = sub.add_parser("phase1-fetch", help="fetch EOD, splits and dividends")
+    p.add_argument("--endpoints", nargs="+", default=["eod", "splits", "dividends"],
+                   choices=["eod", "splits", "dividends"])
+    p.add_argument("--limit", type=int, default=None, help="cap the universe size")
+    p.add_argument("--sample-seed", type=int, default=None,
+                   help="take a deterministic random subsample instead of the first N")
+    p.set_defaults(func=cmd_phase1_fetch)
+
+    p = sub.add_parser("phase1-build", help="build price parquet from the raw archive")
+    p.add_argument("--start-date", default=START_DATE)
+    p.set_defaults(func=cmd_phase1_build)
+
+    p = sub.add_parser("phase1-adjust", help="compute corporate-action adjustment factors")
+    p.set_defaults(func=cmd_phase1_adjust)
+
+    p = sub.add_parser("phase1-reconcile",
+                       help="verify rebuilt adjusted prices against the vendor's")
+    p.add_argument("--tolerance", type=float, default=0.01)
+    p.add_argument("--sample", type=int, default=None)
+    p.set_defaults(func=cmd_phase1_reconcile)
+
+    p = sub.add_parser("phase1-qa", help="run the Phase 1 quality gate")
+    p.set_defaults(func=cmd_phase1_qa)
 
     p = sub.add_parser("status", help="ledger and budget summary")
     p.set_defaults(func=cmd_status)

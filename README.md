@@ -104,19 +104,25 @@ Bulk fundamentals is the inverse: 0.2 calls/symbol vs 10 individually.
 
 ## Roadmap
 
-- **Phase 0b** — ID mapping (ISIN/CUSIP/FIGI/CIK); 37.7% of securities currently lack an ISIN
-- **Phase 1** — EOD history + splits + dividends, all 322k securities (~450k calls)
-- **Phase 2** — fundamentals, bulk for active, `symbols=` batching for delisted
-- **Phase 3** — point-in-time index constituents (separate marketplace product)
-- **Phase 4** — intraday, scoped to a defined universe
-- **Phase 5** — news, insider, macro, options
+Universe for Phase 1 onward is the **32,525 US tradable securities**
+(NYSE/NASDAQ/AMEX/ARCA/BATS x Common Stock/ETF/Preferred), floored at
+**2000-01-01** — see [DATA_RETRIEVAL.md §3.2](docs/DATA_RETRIEVAL.md) for why
+1995 was rejected.
+
+- **Phase 1** — EOD (done), splits, dividends · 1 call each
+- **Phase 2** — index constituents, exchange hours, earnings calendar, macro,
+  forex/crypto/bond EOD · ~23.5k calls
+- **Phase 3** — fundamentals · 10 calls/symbol (`bulk-fundamentals` is **not**
+  entitled on All-In-One), ~325k calls across ~4 days in per-venue blocks
+- **Out of scope** — intraday (~650k calls), insider Form 4, news, historical
+  market cap, options. Rationale in DATA_RETRIEVAL.md §6.
+
+Run `python -m xcap.cli plan` to cost what remains against today's budget.
 
 ## Before cancelling
 
-Coverage query clean; adjustment reconstruction reconciles against vendor
-`adjusted_close`; every parquet reads back and matches its manifest checksum;
-raw archive backed up to a second location. The raw archive is the asset — the
-parquet is rebuildable, the raws are not.
-
-Also verify EODHD's terms on retaining and using data after the subscription
-ends before relying on this plan.
+Six-point gate in [DATA_RETRIEVAL.md §8](docs/DATA_RETRIEVAL.md). The two that
+are easiest to skip and most expensive to skip: **back up `data/_raw/` to a
+second location** (it is gitignored and lives on one machine — that ~1.5 GB *is*
+the purchase), and **read the vendor's terms** on retaining data after the
+subscription ends.

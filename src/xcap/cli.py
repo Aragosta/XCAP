@@ -26,6 +26,7 @@ from .jobs.phase2_reference import fetch_reference
 from .jobs.probe_delisting import probe_delisting, verdict
 from .jobs.probe_history import probe_history
 from .ledger import Ledger
+from .plan import report as plan_report
 from .universe import START_DATE
 from .qa.phase0_checks import format_report, run_checks
 from .qa.coverage import write_report
@@ -224,6 +225,15 @@ def cmd_coverage(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_plan(args: argparse.Namespace) -> int:
+    ledger = Ledger()
+    try:
+        print(plan_report(ledger, split_by_venue=args.split_by_venue))
+    finally:
+        ledger.close()
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     ledger = Ledger()
     try:
@@ -310,6 +320,11 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("coverage",
                        help="write data/catalog/PROGRESS.md: what is downloaded and what remains")
     p.set_defaults(func=cmd_coverage)
+
+    p = sub.add_parser("plan", help="cost the remaining work against today's budget")
+    p.add_argument("--split-by-venue", action="store_true",
+                   help="break equity blocks into whole per-venue blocks")
+    p.set_defaults(func=cmd_plan)
 
     p = sub.add_parser("status", help="ledger and budget summary")
     p.set_defaults(func=cmd_status)

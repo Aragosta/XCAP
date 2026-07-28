@@ -4,6 +4,7 @@
     python -m xcap.cli phase0-build     # raw archive -> parquet (no network)
     python -m xcap.cli phase0-qa        # bias + integrity gate
     python -m xcap.cli probe-history    # measure real EOD history depth on a sample
+    python -m xcap.cli probe-delisting  # test a start year for survivorship-bias safety
     python -m xcap.cli status           # ledger and budget summary
 """
 
@@ -18,6 +19,7 @@ import sys
 from .config import ensure_dirs, load_config
 from .eodhd.budget import Budget
 from .jobs.phase0_universe import fetch_universe
+from .jobs.probe_delisting import probe_delisting, verdict
 from .jobs.probe_history import probe_history
 from .ledger import Ledger
 from .qa.phase0_checks import format_report, run_checks
@@ -98,6 +100,31 @@ def cmd_probe_history(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_probe_delisting(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    ledger = Ledger()
+    try:
+        report = asyncio.run(probe_delisting(
+            cfg, ledger, n=args.sample, seed=args.seed,
+        ))
+    finally:
+        ledger.close()
+    print(f"\nDelisting coverage — US {'/'.join(report['types'])}")
+    print(f"  population {report['population']:,} | sampled {report['sampled']} | "
+          f"with data {report['with_data']} | scale x{report['scale_factor']}")
+    print(f"  earliest delisting in archive: {report['earliest_delisting']}\n")
+    print("  year  sampled  implied")
+    for year, v in report["delisting_year_histogram"].items():
+        print(f"  {year}  {v['sampled']:>7}  {v['implied_population']:>7}  "
+              f"{'#' * min(v['sampled'], 60)}")
+    print()
+    for start in args.start_years:
+        level, msg = verdict(report, start)
+        print(f"  start {start}: {level} — {msg}")
+    print()
+    return 1 if any(verdict(report, s)[0] == "FAIL" for s in args.start_years) else 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     ledger = Ledger()
     try:
@@ -143,6 +170,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--per-stratum", type=int, default=40)
     p.add_argument("--seed", type=int, default=7)
     p.set_defaults(func=cmd_probe_history)
+
+    p = sub.add_parser("probe-delisting",
+                       help="test whether the delisted archive supports a given start year")
+    p.add_argument("--sample", type=int, default=1000)
+    p.add_argument("--seed", type=int, default=11)
+    p.add_argument("--start-years", type=int, nargs="+", default=[1995, 2000, 2005])
+    p.set_defaults(func=cmd_probe_delisting)
 
     p = sub.add_parser("status", help="ledger and budget summary")
     p.set_defaults(func=cmd_status)

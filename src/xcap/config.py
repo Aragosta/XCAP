@@ -31,7 +31,7 @@ def _load_dotenv() -> None:
 class Config:
     api_token: str
     base_url: str = "https://eodhd.com/api"
-    rate_per_min: int = 800
+    rate_per_min: int = 500
     daily_call_budget: int = 100_000
     concurrency: int = 8
     timeout_s: float = 60.0
@@ -51,7 +51,7 @@ def load_config() -> Config:
         )
     return Config(
         api_token=token,
-        rate_per_min=int(os.environ.get("XCAP_RATE_PER_MIN", 800)),
+        rate_per_min=int(os.environ.get("XCAP_RATE_PER_MIN", 500)),
         daily_call_budget=int(os.environ.get("XCAP_DAILY_CALL_BUDGET", 100_000)),
         concurrency=int(os.environ.get("XCAP_CONCURRENCY", 8)),
     )

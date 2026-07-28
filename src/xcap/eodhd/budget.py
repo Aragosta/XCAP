@@ -28,6 +28,13 @@ ENDPOINT_COST = {
     "options": 10,
     "bulk-eod": 100,
     "bulk-fundamentals": 100,
+    # Entitlement probes: cost mirrors the real endpoint each one stands in for.
+    "probe-fundamentals": 10, "probe-bulk-fundamentals": 100,
+    "probe-fundamentals-index": 10, "probe-fundamentals-etf": 10,
+    "probe-historical-market-cap": 10, "probe-insider": 10,
+    "probe-macro-indicator": 10, "probe-options": 10,
+    "probe-news": 5, "probe-sentiments": 5, "probe-intraday": 5,
+    "probe-technical-splitadj": 5,
 }
 
 

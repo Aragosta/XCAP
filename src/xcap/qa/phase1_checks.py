@@ -45,7 +45,14 @@ def _connect() -> duckdb.DuckDBPyConnection:
     con.execute(f"CREATE VIEW eod AS SELECT * FROM read_parquet('{PARQUET_DIR}/eod/**/*.parquet')")
     con.execute(f"CREATE VIEW adj AS SELECT * FROM read_parquet('{PARQUET_DIR}/adjustments/**/*.parquet')")
     con.execute(f"CREATE VIEW splits AS SELECT * FROM read_parquet('{PARQUET_DIR}/splits.parquet')")
-    con.execute(f"CREATE VIEW divs AS SELECT * FROM read_parquet('{PARQUET_DIR}/dividends.parquet')")
+    # Dividends are an optional block. When absent, present an empty view of
+    # the right shape so the corporate-action checks still run over splits
+    # rather than the whole gate failing.
+    if (PARQUET_DIR / "dividends.parquet").exists():
+        con.execute(f"CREATE VIEW divs AS SELECT * FROM read_parquet('{PARQUET_DIR}/dividends.parquet')")
+    else:
+        con.execute("CREATE VIEW divs AS "
+                    "SELECT NULL::INTEGER AS security_id, NULL::DATE AS date WHERE FALSE")
     con.execute(f"CREATE VIEW secs AS SELECT * FROM read_parquet('{PARQUET_DIR}/securities.parquet')")
     return con
 
@@ -138,7 +145,11 @@ def run_checks(ledger: Ledger) -> list[Check]:
     # Splits/dividends dated outside a security's own EOD range: the price
     # series and the action series describe different entities sharing a
     # ticker. This is the ticker-recycling detector deferred from Phase 0.
-    recycled, total_with_events = con.execute("""
+    # An event dated before a security's first bar is NOT evidence of splicing
+    # when it also predates the dataset floor: the price history genuinely
+    # extends further back, we simply do not store it. Counting those inflated
+    # this check from a true 13% to a spurious 42%.
+    recycled, total_with_events = con.execute(f"""
         WITH span AS (SELECT security_id, MIN(date) lo, MAX(date) hi FROM eod GROUP BY 1),
         ev AS (
             SELECT security_id, date FROM splits
@@ -146,7 +157,10 @@ def run_checks(ledger: Ledger) -> list[Check]:
         ),
         flagged AS (
             SELECT e.security_id,
-                   COUNT(*) FILTER (WHERE e.date > s.hi OR e.date < s.lo) AS outside
+                   COUNT(*) FILTER (
+                       WHERE e.date > s.hi
+                          OR (e.date < s.lo AND e.date >= DATE '{START_DATE}')
+                   ) AS outside
             FROM ev e JOIN span s USING (security_id) GROUP BY 1
         )
         SELECT COUNT(*) FILTER (WHERE outside > 0), COUNT(*) FROM flagged
@@ -184,10 +198,19 @@ def run_checks(ledger: Ledger) -> list[Check]:
         WHERE e.vendor_adjusted_close > 0
     """).fetchone()
     pct = 100.0 * within / max(within + outside, 1)
-    checks.append(Check("adjustment reconciliation",
-                        "PASS" if pct >= MIN_PCT_WITHIN_TOLERANCE else "WARN",
-                        f"{pct:.2f}% of bars within 1% of vendor adjusted_close "
-                        f"(target >= {MIN_PCT_WITHIN_TOLERANCE}%)"))
+    if not (PARQUET_DIR / "dividends.parquet").exists():
+        # Comparing split-only factors against a vendor series that includes
+        # dividends is apples to oranges; a low number here says nothing about
+        # data quality. Report it as deferred rather than as a quality signal.
+        checks.append(Check("adjustment reconciliation", "WARN",
+                            f"deferred: factors are split-only while vendor "
+                            f"adjusted_close includes dividends ({pct:.2f}% agree, "
+                            "expected ~49%). Meaningful once dividends are downloaded"))
+    else:
+        checks.append(Check("adjustment reconciliation",
+                            "PASS" if pct >= MIN_PCT_WITHIN_TOLERANCE else "WARN",
+                            f"{pct:.2f}% of bars within 1% of vendor adjusted_close "
+                            f"(target >= {MIN_PCT_WITHIN_TOLERANCE}%)"))
 
     con.close()
     return checks

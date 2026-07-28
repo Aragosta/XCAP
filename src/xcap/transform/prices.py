@@ -24,7 +24,7 @@ from ..config import CATALOG_DIR, DATA_DIR, PARQUET_DIR
 from ..eodhd.client import EodhdClient
 from ..ledger import Ledger
 from ..schemas.prices import DIVIDENDS, SPLITS
-from ..universe import START_DATE
+from ..universe import START_DATE, select
 
 log = logging.getLogger("xcap.transform.prices")
 
@@ -254,17 +254,40 @@ def build_dividends(ledger: Ledger) -> dict:
             "bytes": path.stat().st_size, "sha256": _sha(path)}
 
 
+def _resolved(ledger: Ledger, endpoint: str) -> int:
+    """Securities with a terminal answer for `endpoint` -- ok, empty or 404."""
+    return sum(len(ledger.rows(endpoint, status=s))
+               for s in ("ok", "empty", "not_found"))
+
+
 def build_all(ledger: Ledger, start_date: str = START_DATE) -> dict:
-    datasets = {"splits": build_splits(ledger)}
-    # Dividends are an optional stage: skip cleanly when they have not been
-    # downloaded rather than emitting a partial file that looks complete.
-    if ledger.rows("dividends", status="ok"):
-        datasets["dividends"] = build_dividends(ledger)
-    else:
-        log.warning("no dividends fetched; skipping dividends.parquet")
-        (PARQUET_DIR / "dividends.parquet").unlink(missing_ok=True)
+    """Build every dataset whose download block is COMPLETE.
+
+    Completeness, not mere presence, is the gate. A parquet built from a
+    partially downloaded block is worse than no parquet at all: it carries no
+    marker of its own incompleteness, so anything reading it computes over a
+    silently truncated universe. Blocks still in flight are skipped and any
+    stale artefact from an earlier partial build is removed.
+    """
+    universe_size = len(select())
+    datasets: dict[str, dict] = {}
+    skipped: dict[str, str] = {}
+
+    for name, builder, filename in (
+        ("splits", build_splits, "splits.parquet"),
+        ("dividends", build_dividends, "dividends.parquet"),
+    ):
+        done = _resolved(ledger, name)
+        if done >= universe_size:
+            datasets[name] = builder(ledger)
+        else:
+            reason = f"{done:,}/{universe_size:,} securities resolved"
+            log.warning("skipping %s: block incomplete (%s)", filename, reason)
+            skipped[name] = reason
+            (PARQUET_DIR / filename).unlink(missing_ok=True)
+
     datasets["eod"] = build_eod(ledger, start_date)
-    manifest = {"start_date": start_date, "datasets": datasets}
+    manifest = {"start_date": start_date, "datasets": datasets, "skipped": skipped}
     CATALOG_DIR.mkdir(parents=True, exist_ok=True)
     (CATALOG_DIR / "phase1_manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest

@@ -16,7 +16,9 @@ import asyncio
 import json
 import logging
 import sys
+from pathlib import Path
 
+from .backup import backup as do_backup, verify_raw
 from .config import ensure_dirs, load_config
 from .eodhd.budget import Budget
 from .corpactions import build_adjustments, reconcile
@@ -234,6 +236,39 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify(args: argparse.Namespace) -> int:
+    ledger = Ledger()
+    try:
+        res = verify_raw(ledger, full=not args.fast)
+    finally:
+        ledger.close()
+    mode = "existence only" if args.fast else "full sha256"
+    print(f"\nRaw archive verification ({mode})\n")
+    print(f"  checked   {res.checked:,}")
+    print(f"  ok        {res.ok:,}")
+    print(f"  missing   {len(res.missing):,}")
+    print(f"  corrupt   {len(res.corrupt):,}")
+    for label, items in (("missing", res.missing), ("corrupt", res.corrupt)):
+        for x in items[:10]:
+            print(f"    {label}: {x}")
+    print(f"\n  {'CLEAN' if res.clean else 'FAILED'}\n")
+    return 0 if res.clean else 1
+
+
+def cmd_backup(args: argparse.Namespace) -> int:
+    ledger = Ledger()
+    try:
+        res = do_backup(Path(args.dest), ledger, verify=not args.no_verify)
+    finally:
+        ledger.close()
+    print(json.dumps(res, indent=2))
+    v = res.get("verify")
+    if v and not v["clean"]:
+        print("\nBACKUP VERIFICATION FAILED - do not rely on this copy.")
+        return 1
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     ledger = Ledger()
     try:
@@ -325,6 +360,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--split-by-venue", action="store_true",
                    help="break equity blocks into whole per-venue blocks")
     p.set_defaults(func=cmd_plan)
+
+    p = sub.add_parser("verify", help="check the raw archive against ledger checksums")
+    p.add_argument("--fast", action="store_true",
+                   help="check existence only, skip rehashing")
+    p.set_defaults(func=cmd_verify)
+
+    p = sub.add_parser("backup", help="mirror the raw archive + catalog, then verify the copy")
+    p.add_argument("dest", help="destination directory")
+    p.add_argument("--no-verify", action="store_true")
+    p.set_defaults(func=cmd_backup)
 
     p = sub.add_parser("status", help="ledger and budget summary")
     p.set_defaults(func=cmd_status)

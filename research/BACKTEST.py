@@ -383,6 +383,7 @@ def backtest(
     dollar_volume=None,
     raw_prices=None,
     delist_return=None,
+    delist_dates=None,
     track_trades: bool = True,
 ) -> dict:
     """
@@ -427,6 +428,12 @@ def backtest(
                        of the Series keep the default hold-flat behaviour. None (the
                        default) models no delisting at all, which flatters any run on a
                        survivorship-free panel.
+    delist_dates     : Series by ticker of each name's LAST TRADING DATE, taken from
+                       the full history rather than from `prices`. Names absent from it
+                       are never written off. Without it the last print in `prices` is
+                       used instead, which cannot tell a delisting from the end of your
+                       data — a name that goes quiet before the panel ends is written
+                       off as though it died.
     track_trades     : build the per-trade blotter.
 
     Returns the `_metrics` dict plus 'trades', 'yearly' and 'capital'.
@@ -526,11 +533,32 @@ def backtest(
               else pd.Series(delist_return).reindex(cols)).to_numpy(float)
         if np.any(dr < -1.0):
             raise ValueError("`delist_return` must be >= -1.0 (-1.0 is a total loss).")
-        traded = np.isfinite(pv)
-        ever = traded.any(axis=0)
-        # Last row that printed, per name; `ever` guards the all-NaN column.
-        last = n_dates - 1 - traded[::-1].argmax(axis=0)
-        gone = ever & (last < n_dates - 1) & np.isfinite(dr)
+
+        if delist_dates is not None:
+            dd = pd.to_datetime(pd.Series(delist_dates).reindex(cols))
+            # Row of the last trading date; the write-off lands on the row after it.
+            # A name with no date on file has not delisted, and NaT would make
+            # searchsorted meaningless, so it is parked on the final row — which the
+            # range check below then excludes along with every other date that falls
+            # outside this window, before it (last < 0) or at/after its end.
+            last = idx.searchsorted(dd.fillna(idx[-1]).to_numpy("datetime64[ns]"),
+                                    side="right") - 1
+            gone = (last >= 0) & (last < n_dates - 1)
+        else:
+            # No dates given: fall back to the last print, which is what the vendor
+            # data supports (EODHD has no delisting-date field) but which cannot tell a
+            # delisting from the end of your download — a name that merely goes quiet
+            # before the panel ends is written off too. Pass `delist_dates` from the
+            # full history, and restrict `delist_return` to a Series of names actually
+            # flagged delisted, whenever you can.
+            traded = np.isfinite(pv)
+            # Last row that printed, per name; `ever` guards the all-NaN column.
+            last = n_dates - 1 - traded[::-1].argmax(axis=0)
+            gone = traded.any(axis=0) & (last < n_dates - 1)
+
+        # Stated here rather than left to the drift loop's NaN→0.0 handling: a name with
+        # no return on file keeps the hold-flat behaviour, and that is a contract.
+        gone &= np.isfinite(dr)
         rets_np[last[gone] + 1, np.flatnonzero(gone)] = dr[gone]
 
     equity_np, turn_np, cost_np, borrow_np, comm_np, imp_np = _drift_core(
@@ -859,6 +887,28 @@ if __name__ == "__main__":
         pass
     else:
         raise AssertionError("delist_return below -100% was accepted")
+
+    # dates, not the shape of the panel. A name that merely goes quiet before the panel
+    # ends looks identical to a delisting when the date is inferred from the last print
+    dlk = dict(signal_dates=[dl_dates[0]], delist_return=-1.0)
+    assert abs(backtest(dl_w, dl_px, **dlk)["total_return"] + 0.5) < 1e-12
+    assert abs(backtest(dl_w, dl_px, delist_dates=pd.Series({"A": "2020-01-06"}),
+                        **dlk)["total_return"] + 0.5) < 1e-12, \
+        "an explicit delisting date did not book the write-off"
+    # lag=0 so the book is on from the first row a spurious write-off could land on
+    assert abs(backtest(dl_w, dl_px, lag=0, delist_dates=pd.Series(dtype="datetime64[ns]"),
+                        **dlk)["total_return"]) < 1e-12, \
+        "a quiet name with no delisting date on file was written off anyway"
+    # a date outside the window is not a delisting inside it
+    for d in ("2019-06-01", "2020-01-14"):
+        assert abs(backtest(dl_w, dl_px, delist_dates=pd.Series({"A": d}),
+                            **dlk)["total_return"]) < 1e-12, \
+            f"delisting dated {d} was booked inside a window it falls outside of"
+    # the write-off follows the DATE even when the price series runs on past it
+    live = pd.DataFrame({"A": [100.0] * 10, "B": [100.0] * 10}, index=dl_dates)
+    dl_d = backtest(dl_w, live, delist_dates=pd.Series({"A": "2020-01-08"}), **dlk)
+    assert abs(dl_d["equity"].iloc[5]) > 0.99 and abs(dl_d["total_return"] + 0.5) < 1e-12, \
+        "write-off did not track the delisting date"
 
     # exec timing: the fill is the close the position was opened at, not the next one
     t_dates = pd.bdate_range("2020-01-01", periods=3)

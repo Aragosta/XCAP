@@ -20,8 +20,10 @@ Conventions
   every share traded, both sides — not 0.5·Σ|Δw|.
 - Cost reporting is an annualized drag in pp/yr (`ann_*_drag`), comparable to
   `ann_return`. `ann_cost_drag` is ALL-IN; commission and impact are components of it.
-- NOT modelled: delisting returns (a name that leaves `prices` is held flat, not
-  written down), and EUR/USD exposure for a EUR-based account holding USD stocks.
+- Delisting returns are OFF by default: a name that leaves `prices` is held flat, not
+  written down. On a survivorship-free panel that is the single largest inflator in
+  this file — pass `delist_return` (-1.0, or a per-name Series) to book the write-off.
+- NOT modelled: EUR/USD exposure for a EUR-based account holding USD stocks.
 """
 import warnings
 
@@ -110,38 +112,46 @@ def _as_weights_df(weights, *, index: pd.Index, columns: pd.Index) -> pd.DataFra
     return w.sort_index().reindex(index=index, method="ffill").fillna(0.0)
 
 
-def _at_exec(df: pd.DataFrame, exec_dates: pd.Index, cols: pd.Index) -> pd.DataFrame:
-    """Align a (dates×tickers) frame to the execution dates only.
+def _at_exec(val, exec_dates: pd.Index, cols: pd.Index, *, fill=None) -> np.ndarray:
+    """Align a scalar, a by-ticker Series or a (dates×tickers) frame to the (n_exec, N)
+    matrix of values in force at each execution date.
 
     Rows are selected BEFORE columns: reindexing to the full daily index first would
     materialize the whole (T, N) matrix, which is the allocation this design exists to
     avoid. `method="ffill"` on a sorted source gives the last value at or before each
     execution date — identical to ffill-then-slice, without the big intermediate.
+
+    `fill` decides what an unknown entry becomes, and every use of it fails CLOSED —
+    "max" for a rate (worst spread seen) and "min" for a capacity (thinnest volume
+    seen), so a hole in the input can never flatter the run. `fill=None` leaves NaN
+    for the caller to handle.
     """
-    if not isinstance(df, pd.DataFrame):
-        df = df.to_frame().T
-    if not df.index.is_monotonic_increasing:
-        df = df.sort_index()
-    if df.index.equals(exec_dates):
-        return df.reindex(columns=cols)
-    if isinstance(df.index, pd.DatetimeIndex):
-        return df.reindex(index=exec_dates, method="ffill").reindex(columns=cols)
-    return df.reindex(columns=cols)          # single-row frame from a by-ticker Series
+    n = len(exec_dates)
+    if not isinstance(val, (pd.DataFrame, pd.Series)):
+        if val < 0:
+            raise ValueError("rate must be >= 0.")
+        return np.full((n, len(cols)), float(val))
 
+    src = val if isinstance(val, pd.DataFrame) else val.to_frame().T
+    if not src.index.is_monotonic_increasing:
+        src = src.sort_index()
+    aligned = (src.reindex(index=exec_dates, method="ffill")
+               if isinstance(src.index, pd.DatetimeIndex) and not src.index.equals(exec_dates)
+               else src)
+    out = aligned.reindex(columns=cols).to_numpy(float)
+    if out.shape[0] == 1 != n:               # by-ticker Series: one row, held everywhere
+        out = np.repeat(out, n, axis=0)
+    if out.shape[0] != n:
+        raise ValueError("execution input must be date-indexed or a single row.")
 
-def _exec_matrix(val, exec_dates: pd.Index, cols: pd.Index) -> np.ndarray:
-    """Coerce a scalar or (dates×tickers) frame to an (n_exec, N) execution-row matrix."""
-    if isinstance(val, (pd.DataFrame, pd.Series)):
-        src = val if isinstance(val, pd.DataFrame) else val.to_frame().T
-        # Unknown rate → worst observed, so a data gap can never flatter the run.
-        fallback = float(np.nanmax(src.to_numpy())) if src.size else 0.0
-        out = _at_exec(src, exec_dates, cols)
-        if len(out) == 1 and len(exec_dates) != 1:       # static by-ticker rates
-            return np.repeat(out.fillna(fallback).to_numpy(float), len(exec_dates), axis=0)
-        return out.fillna(fallback).to_numpy(float)
-    if val < 0:
-        raise ValueError("rate must be >= 0.")
-    return np.full((len(exec_dates), len(cols)), float(val))
+    if fill is not None:
+        # Worst case over the WHOLE source, not just the execution rows — an unknown
+        # entry is unknown against everything that was ever observed.
+        known = src.to_numpy(float)
+        known = known[np.isfinite(known)]
+        if known.size:
+            out = np.where(np.isnan(out), known.min() if fill == "min" else known.max(), out)
+    return out
 
 
 def _check_freq(idx: pd.Index, freq: float) -> None:
@@ -372,6 +382,7 @@ def backtest(
     impact_coef: float = 0.0,
     dollar_volume=None,
     raw_prices=None,
+    delist_return=None,
     track_trades: bool = True,
 ) -> dict:
     """
@@ -409,6 +420,13 @@ def backtest(
                        and the blotter. Defaults to `prices` — pass the unadjusted
                        series if `prices` is back-adjusted, or historical share counts
                        and therefore commissions will be badly wrong.
+    delist_return    : terminal return booked the day after a name's last print, for
+                       names whose price never returns before the end of `prices`.
+                       Scalar (-1.0 writes the position off in full) or a Series by
+                       ticker for CRSP-style per-name delisting returns; names left out
+                       of the Series keep the default hold-flat behaviour. None (the
+                       default) models no delisting at all, which flatters any run on a
+                       survivorship-free panel.
     track_trades     : build the per-trade blotter.
 
     Returns the `_metrics` dict plus 'trades', 'yearly' and 'capital'.
@@ -462,22 +480,14 @@ def backtest(
     # always (ep = sp+lag+1), so -1 never wraps.
     fill_rows = exec_rows - 1
     exec_dates = idx[fill_rows]
-    ex_tc = _exec_matrix(transaction_cost, exec_dates, cols)
-    ex_px = (_at_exec(_as_prices_df(raw_prices), exec_dates, cols).to_numpy(float)
+    ex_tc = _at_exec(transaction_cost, exec_dates, cols, fill="max")
+    ex_px = (_at_exec(_as_prices_df(raw_prices), exec_dates, cols)
              if raw_prices is not None else pv_ffill[fill_rows])
     # Unknown fill price → last known close, matching the returns denominator. Skipping
     # the charge instead (the old NaN behaviour) makes a data hole free to trade.
     ex_px = np.where(np.isnan(ex_px), pv_ffill[fill_rows], ex_px)
-    if dollar_volume is not None:
-        ex_adv = _at_exec(dollar_volume, exec_dates, cols).to_numpy(float)
-        # Fail closed like `spread_costs`: unknown ADV → the thinnest volume observed,
-        # so a gap in the volume data can never buy an impact-free fill.
-        dvv = dollar_volume.to_numpy(float)
-        known = dvv[np.isfinite(dvv)]
-        if known.size:
-            ex_adv = np.where(np.isnan(ex_adv), known.min(), ex_adv)
-    else:
-        ex_adv = np.full((n_exec, n_assets), np.nan)
+    ex_adv = (_at_exec(dollar_volume, exec_dates, cols, fill="min")
+              if dollar_volume is not None else np.full((n_exec, n_assets), np.nan))
 
     # Borrow accrues every period, so it is the one rate kept at full (T, N) — and only
     # when it actually varies by name.
@@ -506,6 +516,22 @@ def backtest(
         np.divide(pv[1:], pv_ffill[:-1], out=rets_np[1:])
         rets_np[1:] -= 1.0
     rets_np[~np.isfinite(rets_np)] = np.nan
+
+    if delist_return is not None:
+        # A name whose price stops for good is currently carried at its last print and
+        # later "sold" there — a bankruptcy and a takeunder both come back as 0%. Book
+        # the terminal return on the row after the last print instead: the weight then
+        # drifts by (1 + delist_return) and the position is written down for real.
+        dr = (pd.Series(delist_return, index=cols) if np.isscalar(delist_return)
+              else pd.Series(delist_return).reindex(cols)).to_numpy(float)
+        if np.any(dr < -1.0):
+            raise ValueError("`delist_return` must be >= -1.0 (-1.0 is a total loss).")
+        traded = np.isfinite(pv)
+        ever = traded.any(axis=0)
+        # Last row that printed, per name; `ever` guards the all-NaN column.
+        last = n_dates - 1 - traded[::-1].argmax(axis=0)
+        gone = ever & (last < n_dates - 1) & np.isfinite(dr)
+        rets_np[last[gone] + 1, np.flatnonzero(gone)] = dr[gone]
 
     equity_np, turn_np, cost_np, borrow_np, comm_np, imp_np = _drift_core(
         rets_np, ex_px, ex_adv, ex_w, ex_tc, float(short_cost_mult),
@@ -796,6 +822,44 @@ if __name__ == "__main__":
     gap2 = backtest(pd.Series({"A": 1.0}), gap_px, signal_dates=[gap_dates[1]], lag=0)
     assert len(gap2["trades"]) == 1, "trade suppressed using the next day's price"
 
+    # delistings: a name that stops printing is written off, not held flat
+    dl_dates = pd.bdate_range("2020-01-01", periods=10)
+    dl_px = pd.DataFrame({"A": [100.0] * 4 + [np.nan] * 6,
+                          "B": [100.0] * 10}, index=dl_dates)
+    dl_w = pd.Series({"A": 0.5, "B": 0.5})
+    assert abs(backtest(dl_w, dl_px, signal_dates=[dl_dates[0]])["total_return"]) < 1e-12, \
+        "default should still hold a vanished name flat"
+    dl = backtest(dl_w, dl_px, signal_dates=[dl_dates[0]], delist_return=-1.0)
+    assert abs(dl["total_return"] + 0.5) < 1e-12, \
+        f"delisted half the book should cost 50%, got {dl['total_return']:.4%}"
+    assert abs(dl["equity"].iloc[-1] - dl["equity"].iloc[4]) < 1e-12, \
+        "write-off leaked past the day after the last print"
+    # a name still trading on the last row has not delisted
+    assert abs(backtest(pd.Series({"B": 1.0}), dl_px[["B"]], signal_dates=[dl_dates[0]],
+                        delist_return=-1.0)["total_return"]) < 1e-12, \
+        "a live name was written off at the end of the sample"
+    # per-name returns, and names absent from the Series keep the old behaviour
+    dl_s = backtest(dl_w, dl_px, signal_dates=[dl_dates[0]],
+                    delist_return=pd.Series({"A": -0.7}))
+    assert abs(dl_s["total_return"] + 0.35) < 1e-12, "per-ticker delist_return misapplied"
+    dl_px2 = dl_px.assign(C=[100.0] * 6 + [np.nan] * 4)
+    dl_s2 = backtest(pd.Series({"A": 0.5, "B": 0.25, "C": 0.25}), dl_px2,
+                     signal_dates=[dl_dates[0]], delist_return=pd.Series({"A": -1.0}))
+    assert abs(dl_s2["total_return"] + 0.5) < 1e-12, \
+        "a delisted name left out of the Series should still be held flat"
+    # the last print's own move is real and must survive the write-off booked after it
+    dl_px3 = pd.DataFrame({"A": [100.0, 100.0, 100.0, 120.0] + [np.nan] * 6,
+                           "B": [100.0] * 10}, index=dl_dates)
+    dl3 = backtest(dl_w, dl_px3, signal_dates=[dl_dates[0]], delist_return=-1.0)
+    assert abs(dl3["equity"].iloc[3] - 1.1) < 1e-12, \
+        "write-off landed on the last print instead of the day after it"
+    try:
+        backtest(dl_w, dl_px, signal_dates=[dl_dates[0]], delist_return=-1.5)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("delist_return below -100% was accepted")
+
     # exec timing: the fill is the close the position was opened at, not the next one
     t_dates = pd.bdate_range("2020-01-01", periods=3)
     t_px = pd.DataFrame({"A": [100.0, 150.0, 150.0]}, index=t_dates)
@@ -812,6 +876,21 @@ if __name__ == "__main__":
     t_c = backtest(pd.Series({"A": 1.0}), t_px, signal_dates=[t_dates[0]], lag=0,
                    transaction_cost=t_tc)
     assert t_c["cost_frac"].iloc[1] == 0.0, "spread was read from the row after the fill"
+
+    # a by-ticker spread is one row held across EVERY execution date (needs more than
+    # one of them to bite) and must match spelling the same rates out per date
+    tc_s = pd.Series([0.002, 0.004] * 3, index=px.columns)
+    r_ts = backtest(w, px, signal_dates=list(month_ends), transaction_cost=tc_s)
+    r_td = backtest(w, px, signal_dates=list(month_ends),
+                    transaction_cost=pd.DataFrame([tc_s] * len(px), index=px.index))
+    assert abs(r_ts["ann_cost_drag"] - r_td["ann_cost_drag"]) < 1e-12, \
+        "per-ticker spread was not held across execution dates"
+
+    # an unknown spread costs the worst spread observed, never nothing
+    t_h = pd.DataFrame({"A": [np.nan, np.nan, 0.10]}, index=t_dates)
+    t_w = backtest(pd.Series({"A": 1.0}), t_px, signal_dates=[t_dates[0]], lag=0,
+                   transaction_cost=t_h)
+    assert abs(t_w["cost_frac"].iloc[1] - 0.10) < 1e-12, "unknown spread traded for free"
 
     # walk_forward: a static signal is HELD over its block, not re-targeted daily.
     # Weights must be multi-name for this to bite — a 100%-single-name book cannot
@@ -843,6 +922,15 @@ if __name__ == "__main__":
     r_nan = backtest(w, px, signal_dates=list(month_ends), capital=50e6,
                      dollar_volume=imp_dv, impact_coef=0.1)
     assert r_nan["ann_impact_drag"] > 0, "NaN ADV bought an impact-free fill"
+    # and it is the THINNEST volume observed, not the friendliest one
+    imp_dv2 = dv.copy()
+    imp_dv2.iloc[:, :] = np.nan
+    imp_dv2.iloc[0, 0], imp_dv2.iloc[0, 1] = 1e6, 1e12
+    ikw = dict(signal_dates=list(month_ends), capital=50e6, impact_coef=0.1)
+    r_min = backtest(w, px, dollar_volume=imp_dv2, **ikw)
+    r_ref = backtest(w, px, dollar_volume=pd.DataFrame(1e6, *dv.axes), **ikw)
+    assert abs(r_min["ann_impact_drag"] - r_ref["ann_impact_drag"]) < 1e-12, \
+        "unknown ADV fell back to the deepest volume instead of the thinnest"
 
     # ...same for an unknown raw fill price: commission is per share, so no price means
     # no share count, and the charge used to be skipped outright. One name with no raw

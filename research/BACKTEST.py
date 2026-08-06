@@ -85,33 +85,29 @@ def _as_weights_df(weights, *, index: pd.Index, columns: pd.Index) -> pd.DataFra
 
     if isinstance(weights, pd.DataFrame):
         w = weights.reindex(columns=columns)
-        if w.index.equals(index):
-            return w.fillna(0.0)
-        return w.sort_index().reindex(index=index, method="ffill").fillna(0.0)
-
-    if isinstance(weights, pd.Series):
+    elif isinstance(weights, pd.Series):
         if weights.index.difference(columns).empty:          # static weights by ticker
-            row = weights.reindex(columns).to_numpy(float)
-            return pd.DataFrame([row], index=[index[0]], columns=columns) \
-                     .reindex(index=index, method="ffill").fillna(0.0)
-        if len(columns) == 1 and weights.index.difference(index).empty:   # single asset, by date
-            return weights.sort_index().to_frame(columns[0]) \
-                          .reindex(index=index, method="ffill").fillna(0.0)
-        raise ValueError("`weights` Series must be indexed by tickers, or by dates when single-asset.")
+            w = weights.reindex(columns).astype(float).to_frame().T.set_axis([index[0]])
+        elif len(columns) == 1 and weights.index.difference(index).empty:  # single asset, by date
+            w = weights.to_frame(columns[0])
+        else:
+            raise ValueError("`weights` Series must be indexed by tickers, or by dates when single-asset.")
+    else:
+        arr = np.asarray(weights, dtype=float)
+        if arr.ndim == 1:
+            if arr.shape[0] != len(columns):
+                raise ValueError("1D `weights` length must match number of `prices` columns.")
+            arr = arr.reshape(1, -1)
+        if arr.ndim != 2 or arr.shape[1] != len(columns) or arr.shape[0] not in (1, len(index)):
+            raise ValueError("`weights` array must be 1D (N,) or 2D (T, N) aligned to prices.")
+        rows = index if arr.shape[0] == len(index) else [index[0]]
+        w = pd.DataFrame(arr, index=rows, columns=columns)
 
-    arr = np.asarray(weights, dtype=float)
-    if arr.ndim == 1:
-        if arr.shape[0] != len(columns):
-            raise ValueError("1D `weights` length must match number of `prices` columns.")
-        return pd.DataFrame([arr], index=[index[0]], columns=columns) \
-                 .reindex(index=index, method="ffill").fillna(0.0)
-    if arr.ndim == 2 and arr.shape[1] == len(columns):
-        if arr.shape[0] == len(index):
-            return pd.DataFrame(arr, index=index, columns=columns).fillna(0.0)
-        if arr.shape[0] == 1:
-            return pd.DataFrame(arr, index=[index[0]], columns=columns) \
-                     .reindex(index=index, method="ffill").fillna(0.0)
-    raise ValueError("`weights` array must be 1D (N,) or 2D (T, N) aligned to prices.")
+    # Every branch above produces rows stamped on some subset of dates; they all end the
+    # same way — hold each row until the next one, treat anything unset as flat.
+    if w.index.equals(index):
+        return w.fillna(0.0)
+    return w.sort_index().reindex(index=index, method="ffill").fillna(0.0)
 
 
 def _at_exec(df: pd.DataFrame, exec_dates: pd.Index, cols: pd.Index) -> pd.DataFrame:
@@ -190,7 +186,6 @@ def _drift_core(rets, ex_px, ex_adv, ex_w, ex_tc, short_mult,
     comm_frac = np.zeros(n_dates)
     impact_frac = np.zeros(n_dates)
     w = np.zeros(n_assets)
-    any_short = False
 
     for i in range(n_dates):
         s = exec_slot[i]
@@ -212,9 +207,6 @@ def _drift_core(rets, ex_px, ex_adv, ex_w, ex_tc, short_mult,
                 if track:
                     w_pre[s, j] = w[j]
                     w_post[s, j] = tgt
-                if tgt < 0.0:
-                    any_short = True
-
                 cj = ex_tc[s, j] * short_mult if tgt < 0.0 else ex_tc[s, j]
 
                 # Per-share commission and square-root impact are non-linear in order
@@ -256,7 +248,9 @@ def _drift_core(rets, ex_px, ex_adv, ex_w, ex_tc, short_mult,
                 r = rets[i, j]
                 if r == r:                          # not NaN
                     rp += w[j] * r
-                if any_short and w[j] < 0.0:
+                # Weights drift by (1+r)/(1+rp) with both factors ≥ 0, so a weight is
+                # negative only if it was set negative — no separate "any short" flag.
+                if w[j] < 0.0:
                     borrow += (-w[j]) * (bf_arr[i, j] if bf_is_arr else bf_scalar)
             borrow /= ppy
             if borrow > 0.999:

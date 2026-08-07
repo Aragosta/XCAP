@@ -12,17 +12,16 @@ complete to anything that reads it, which is worse than no parquet at all.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import shutil
 from pathlib import Path
 
-import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from ..config import CATALOG_DIR, DATA_DIR, PARQUET_DIR
+from ..db import connect
 from ..eodhd.client import EodhdClient
 from ..ledger import Ledger
 from ..schemas.fundamentals import (
@@ -30,11 +29,11 @@ from ..schemas.fundamentals import (
     FUNDAMENTALS_GENERAL, FUNDAMENTALS_SHARES,
 )
 from ..universe import select
+from . import ROWS_PER_STAGE_FILE, sha256_file
 
 log = logging.getLogger("xcap.transform.fundamentals")
 
 STAGING = DATA_DIR / "_staging" / "fundamentals"
-ROWS_PER_STAGE_FILE = 4_000_000
 
 STATEMENTS = (
     ("Income_Statement", "income_statement"),
@@ -46,14 +45,6 @@ STATEMENTS = (
 # statement -- every vendor-reported key becomes a row, aside from the
 # metadata fields extracted separately (date, filing_date, currency_symbol).
 _STATEMENT_META = {"date", "filing_date", "currency_symbol"}
-
-
-def _sha(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as fh:
-        for block in iter(lambda: fh.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
 
 
 def _f(value: object) -> float | None:
@@ -74,9 +65,7 @@ def _resolved_universe(ledger: Ledger) -> tuple[list, bool]:
     """Universe securities with a terminal fundamentals answer, and whether
     every security in the universe has one (the completeness gate)."""
     universe = select()
-    done = set()
-    for status in ("ok", "empty", "not_found"):
-        done |= {r["key"] for r in ledger.rows("fundamentals", status=status)}
+    done = ledger.resolved("fundamentals")
     resolved = [s for s in universe if s.api_ticker in done]
     return resolved, len(resolved) >= len(universe)
 
@@ -205,7 +194,7 @@ def build_general_and_coverage(ledger: Ledger, sec_by_ticker: dict) -> dict:
         # date32 fields were appended as ISO strings or None; cast via DuckDB.
         table = pa.table(cols)
         path = PARQUET_DIR / f"{name}.parquet"
-        con = duckdb.connect()
+        con = connect()
         date_cols = [f.name for f in schema if f.type == pa.date32()]
         select_cols = ", ".join(
             f"CAST({c} AS DATE) AS {c}" if c in date_cols else c
@@ -216,7 +205,7 @@ def build_general_and_coverage(ledger: Ledger, sec_by_ticker: dict) -> dict:
                     f"TO '{path}' (FORMAT PARQUET, COMPRESSION zstd)")
         con.close()
         return {"path": str(path.relative_to(DATA_DIR)), "rows": table.num_rows,
-                "bytes": path.stat().st_size, "sha256": _sha(path)}
+                "bytes": path.stat().st_size, "sha256": sha256_file(path)}
 
     return {
         "coverage": _write(cov, FUNDAMENTALS_COVERAGE, "fundamentals_coverage"),
@@ -309,9 +298,7 @@ def build_financials(ledger: Ledger, sec_by_ticker: dict) -> dict:
              total_rows, securities_with_data)
 
     out = PARQUET_DIR / "fundamentals_financials.parquet"
-    con = duckdb.connect()
-    con.execute(f"SET temp_directory='{DATA_DIR / '_duckdb_tmp'}'")
-    con.execute("SET preserve_insertion_order=false")
+    con = connect()
     if total_rows:
         con.execute(f"""
             COPY (
@@ -331,7 +318,7 @@ def build_financials(ledger: Ledger, sec_by_ticker: dict) -> dict:
 
     return {"path": str(out.relative_to(DATA_DIR)), "rows": total_rows,
             "securities": securities_with_data, "bytes": out.stat().st_size,
-            "sha256": _sha(out)}
+            "sha256": sha256_file(out)}
 
 
 # ------------------------------------------------------------ shares outstanding (long)
@@ -362,7 +349,7 @@ def build_shares(ledger: Ledger, sec_by_ticker: dict) -> dict:
                 cols["shares"].append(sh)
 
     out = PARQUET_DIR / "fundamentals_shares.parquet"
-    con = duckdb.connect()
+    con = connect()
     if cols["security_id"]:
         table = pa.table(cols)
         con.register("t", table)
@@ -376,7 +363,7 @@ def build_shares(ledger: Ledger, sec_by_ticker: dict) -> dict:
                                 schema=FUNDAMENTALS_SHARES), out)
     con.close()
     return {"path": str(out.relative_to(DATA_DIR)), "rows": len(cols["security_id"]),
-            "bytes": out.stat().st_size, "sha256": _sha(out)}
+            "bytes": out.stat().st_size, "sha256": sha256_file(out)}
 
 
 # ------------------------------------------------------------ orchestration

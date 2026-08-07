@@ -17,6 +17,7 @@ import asyncio
 import json
 import logging
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 from .backup import backup as do_backup, verify_raw
@@ -54,37 +55,39 @@ def _setup_logging(verbose: bool) -> None:
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
-def cmd_phase0_fetch(args: argparse.Namespace) -> int:
+@contextmanager
+def _fetch_session():
+    """Every network command opens the same way and, crucially, closes the same
+    way: the spend line is printed on the way out even when the job raises, so a
+    run that dies mid-flight still says what it cost."""
     cfg = load_config()
-    ledger = Ledger()
     print(f"token {cfg.redacted_token} | budget {cfg.daily_call_budget:,}/day | "
           f"{cfg.rate_per_min} req/min | concurrency {cfg.concurrency}")
-    try:
+    with Ledger() as ledger:
+        try:
+            yield cfg, ledger
+        finally:
+            print(f"\ncalls spent today: {ledger.spent_today(Budget.gmt_day()):,} "
+                  f"/ {cfg.daily_call_budget:,}")
+
+
+def cmd_phase0_fetch(args: argparse.Namespace) -> int:
+    with _fetch_session() as (cfg, ledger):
         stats = asyncio.run(fetch_universe(cfg, ledger, force=args.force))
-    finally:
-        spent = ledger.spent_today(Budget.gmt_day())
-        print(f"\ncalls spent today: {spent:,} / {cfg.daily_call_budget:,}")
-        ledger.close()
     print(json.dumps(stats, indent=2))
     return 0
 
 
 def cmd_phase0_build(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         manifest = build_all(ledger)
-    finally:
-        ledger.close()
     print(json.dumps(manifest, indent=2))
     return 0
 
 
 def cmd_phase0_qa(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         checks = run_checks(ledger)
-    finally:
-        ledger.close()
     print("\nPhase 0 quality gate\n")
     print(format_report(checks))
     print()
@@ -92,15 +95,11 @@ def cmd_phase0_qa(args: argparse.Namespace) -> int:
 
 
 def cmd_probe_history(args: argparse.Namespace) -> int:
-    cfg = load_config()
-    ledger = Ledger()
-    try:
+    with _fetch_session() as (cfg, ledger):
         report = asyncio.run(probe_history(
             cfg, ledger, exchange=args.exchange,
             per_stratum=args.per_stratum, seed=args.seed,
         ))
-    finally:
-        ledger.close()
     print(f"\nEOD history depth — {report['exchange']} "
           f"(sampled {report['sampled']}, with data {report['with_data']}, "
           f"no data {report['no_data']})\n")
@@ -117,14 +116,10 @@ def cmd_probe_history(args: argparse.Namespace) -> int:
 
 
 def cmd_probe_delisting(args: argparse.Namespace) -> int:
-    cfg = load_config()
-    ledger = Ledger()
-    try:
+    with _fetch_session() as (cfg, ledger):
         report = asyncio.run(probe_delisting(
             cfg, ledger, n=args.sample, seed=args.seed,
         ))
-    finally:
-        ledger.close()
     print(f"\nDelisting coverage — US {'/'.join(report['types'])}")
     print(f"  population {report['population']:,} | sampled {report['sampled']} | "
           f"with data {report['with_data']} | scale x{report['scale_factor']}")
@@ -142,19 +137,11 @@ def cmd_probe_delisting(args: argparse.Namespace) -> int:
 
 
 def cmd_phase1_fetch(args: argparse.Namespace) -> int:
-    cfg = load_config()
-    ledger = Ledger()
-    print(f"token {cfg.redacted_token} | budget {cfg.daily_call_budget:,}/day | "
-          f"{cfg.rate_per_min} req/min | concurrency {cfg.concurrency}")
-    try:
+    with _fetch_session() as (cfg, ledger):
         stats = asyncio.run(fetch_prices(
             cfg, ledger, which=args.endpoints, limit=args.limit,
             seed_sample=args.sample_seed,
         ))
-    finally:
-        print(f"\ncalls spent today: {ledger.spent_today(Budget.gmt_day()):,} "
-              f"/ {cfg.daily_call_budget:,}")
-        ledger.close()
     print(json.dumps(stats, indent=2))
     if stats["budget_exhausted"]:
         print("\nDaily budget exhausted. Re-run after midnight GMT; the ledger "
@@ -163,11 +150,8 @@ def cmd_phase1_fetch(args: argparse.Namespace) -> int:
 
 
 def cmd_phase1_build(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         manifest = build_prices(ledger, start_date=args.start_date)
-    finally:
-        ledger.close()
     print(json.dumps(manifest, indent=2))
     return 0
 
@@ -198,11 +182,8 @@ def cmd_phase1_reconcile(args: argparse.Namespace) -> int:
 
 
 def cmd_phase1_qa(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         checks = checks1(ledger)
-    finally:
-        ledger.close()
     print("\nPhase 1 quality gate\n")
     print(fmt1(checks))
     print()
@@ -210,39 +191,23 @@ def cmd_phase1_qa(args: argparse.Namespace) -> int:
 
 
 def cmd_phase2_fetch(args: argparse.Namespace) -> int:
-    cfg = load_config()
-    ledger = Ledger()
-    try:
+    with _fetch_session() as (cfg, ledger):
         stats = asyncio.run(fetch_reference(cfg, ledger, which=args.which))
-    finally:
-        print(f"\ncalls spent today: {ledger.spent_today(Budget.gmt_day()):,} "
-              f"/ {cfg.daily_call_budget:,}")
-        ledger.close()
     print(json.dumps(stats, indent=2))
     return 0
 
 
 def cmd_phase3_fetch(args: argparse.Namespace) -> int:
-    ledger = Ledger()
     if args.blocks_only:
-        try:
+        with Ledger() as ledger:
             print(phase3_report(ledger, args.only))
-        finally:
-            ledger.close()
         return 0
 
-    cfg = load_config()
-    print(f"token {cfg.redacted_token} | budget {cfg.daily_call_budget:,}/day | "
-          f"{cfg.rate_per_min} req/min | concurrency {cfg.concurrency}")
-    try:
+    with _fetch_session() as (cfg, ledger):
         stats = asyncio.run(fetch_fundamentals(
             cfg, ledger, only=args.only, max_calls=args.max_calls,
             sample=args.sample, seed=args.seed,
         ))
-    finally:
-        print(f"\ncalls spent today: {ledger.spent_today(Budget.gmt_day()):,} "
-              f"/ {cfg.daily_call_budget:,}")
-        ledger.close()
     print(json.dumps(stats, indent=2))
     if stats["stopped"]:
         print(f"\nStopped: {stats['stopped']}\nRe-run to resume; blocks already "
@@ -251,40 +216,28 @@ def cmd_phase3_fetch(args: argparse.Namespace) -> int:
 
 
 def cmd_phase3_build(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         manifest = build_fundamentals(ledger)
-    finally:
-        ledger.close()
     print(json.dumps(manifest, indent=2))
     return 0
 
 
 def cmd_coverage(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         _, md = write_report(ledger)
-    finally:
-        ledger.close()
     print(md)
     return 0
 
 
 def cmd_plan(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         print(plan_report(ledger, split_by_venue=args.split_by_venue))
-    finally:
-        ledger.close()
     return 0
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         res = verify_raw(ledger, full=not args.fast)
-    finally:
-        ledger.close()
     mode = "existence only" if args.fast else "full sha256"
     print(f"\nRaw archive verification ({mode})\n")
     print(f"  checked   {res.checked:,}")
@@ -299,11 +252,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 
 def cmd_backup(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         res = do_backup(Path(args.dest), ledger, verify=not args.no_verify)
-    finally:
-        ledger.close()
     print(json.dumps(res, indent=2))
     v = res.get("verify")
     if v and not v["clean"]:
@@ -313,12 +263,8 @@ def cmd_backup(args: argparse.Namespace) -> int:
 
 
 def cmd_probe_entitlements(args: argparse.Namespace) -> int:
-    cfg = load_config()
-    ledger = Ledger()
-    try:
+    with _fetch_session() as (cfg, ledger):
         report = asyncio.run(probe_entitlements(cfg, ledger))
-    finally:
-        ledger.close()
     print(f"\nEndpoint entitlements ({report['accessible']}/{report['total']} accessible)\n")
     width = max(len(r["endpoint"]) for r in report["probes"])
     for r in report["probes"]:
@@ -333,8 +279,7 @@ def cmd_probe_entitlements(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    ledger = Ledger()
-    try:
+    with Ledger() as ledger:
         print("\nrequests by endpoint/status")
         for r in ledger.summary():
             mb = (r["bytes"] or 0) / 1e6
@@ -350,8 +295,6 @@ def cmd_status(args: argparse.Namespace) -> int:
                 print(f"  {r['endpoint']}/{r['key']}  {r['status']} "
                       f"http={r['http_status']}  {(r['error'] or '')[:80]}")
         print()
-    finally:
-        ledger.close()
     return 0
 
 

@@ -17,9 +17,8 @@ import logging
 import random
 from collections import Counter, defaultdict
 
-import duckdb
-
 from ..config import CATALOG_DIR, Config, PARQUET_DIR
+from ..db import query
 from ..eodhd.client import EodhdClient, RequestSpec
 from ..ledger import Ledger
 
@@ -40,16 +39,14 @@ def eod_probe(ticker: str) -> RequestSpec:
 
 
 def sample_universe(exchange: str, per_stratum: int, seed: int) -> list[dict]:
-    con = duckdb.connect()
-    rows = con.execute(
+    rows = query(
         f"""
         SELECT api_ticker, type, venue, is_delisted
         FROM read_parquet('{PARQUET_DIR / "securities.parquet"}')
         WHERE source_exchange = ?
         """,
         [exchange],
-    ).fetchall()
-    con.close()
+    )
 
     buckets: dict[tuple[str, bool], list[dict]] = defaultdict(list)
     for ticker, typ, venue, delisted in rows:

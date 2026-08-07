@@ -75,6 +75,19 @@ class FetchResult:
         return self.status == "ok"
 
 
+def tally(results: list[FetchResult], into: dict[str, int] | None = None) -> dict[str, int]:
+    """Count results by status. Anything not a terminal answer lands in `failed`,
+    so a new status the client grows later cannot vanish from a job's totals.
+    `into` accumulates across chunks."""
+    counts = into if into is not None else {
+        "ok": 0, "empty": 0, "not_found": 0, "failed": 0, "cached": 0}
+    for r in results:
+        counts[r.status if r.status in counts else "failed"] += 1
+        if r.from_cache and "cached" in counts:
+            counts["cached"] += 1
+    return counts
+
+
 class EodhdClient:
     def __init__(self, cfg: Config, ledger: Ledger) -> None:
         self.cfg = cfg

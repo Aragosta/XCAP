@@ -16,7 +16,7 @@ from typing import Callable
 from ..config import Config
 from ..eodhd import endpoints
 from ..eodhd.budget import BudgetExceeded
-from ..eodhd.client import EodhdClient, RequestSpec
+from ..eodhd.client import EodhdClient, RequestSpec, tally
 from ..ledger import Ledger
 from ..universe import Security, select
 
@@ -74,11 +74,7 @@ async def fetch_prices(
                     budget_hit = True
                     break
 
-                for r in results:
-                    bucket = r.status if r.status in stats[name] else "failed"
-                    stats[name][bucket] += 1
-                    if r.from_cache:
-                        stats[name]["cached"] += 1
+                tally(results, stats[name])
 
                 done += len(chunk)
                 rate = done / max(time.monotonic() - started, 1e-9)

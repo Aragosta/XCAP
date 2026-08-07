@@ -29,14 +29,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-
-try:                                              # optional JIT for the hot loop
-    from numba import jit
-except Exception:                                 # pragma: no cover - fallback
-    def jit(*args, **kwargs):
-        def deco(fn):
-            return fn
-        return deco(args[0]) if (len(args) == 1 and callable(args[0]) and not kwargs) else deco
+from numba import jit
 
 
 # ── cost model ──────────────────────────────────────────────────────────────

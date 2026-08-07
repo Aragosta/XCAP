@@ -80,9 +80,7 @@ def blocks(universe: list[Security] | None = None) -> list[Block]:
 
 def outstanding(ledger: Ledger, block: Block) -> list[Security]:
     """Securities in `block` with no terminal answer yet."""
-    done: set[str] = set()
-    for status in ("ok", "empty", "not_found"):
-        done |= {r["key"] for r in ledger.rows("fundamentals", status=status)}
+    done = ledger.resolved("fundamentals")
     return [s for s in block.securities if s.api_ticker not in done]
 
 

@@ -15,7 +15,7 @@ import json
 import logging
 
 from ..config import Config
-from ..eodhd.client import EodhdClient
+from ..eodhd.client import EodhdClient, tally
 from ..eodhd.endpoints import exchange_symbol_list, exchanges_list
 from ..ledger import Ledger
 
@@ -48,9 +48,7 @@ async def fetch_universe(cfg: Config, ledger: Ledger, *, force: bool = False) ->
         ]
         results = await client.fetch_all(specs, force=force)
 
-    counts = {"ok": 0, "empty": 0, "not_found": 0, "failed": 0}
-    for r in results:
-        counts[r.status if r.status in counts else "failed"] += 1
+    counts = tally(results)
 
     log.info(
         "symbol lists: %d ok, %d empty, %d not_found, %d failed",

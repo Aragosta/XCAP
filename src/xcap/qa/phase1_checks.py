@@ -19,29 +19,21 @@ problems with different fixes:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import duckdb
 
-from ..config import DATA_DIR, PARQUET_DIR
+from ..config import PARQUET_DIR
+from ..db import connect
 from ..ledger import Ledger
 from ..universe import START_DATE, select
+from .report import Check, format_report  # noqa: F401  (re-exported for the CLI)
 
 # Below this, the local rebuild disagrees with the vendor too often to treat
 # either series as trustworthy without triage.
 MIN_PCT_WITHIN_TOLERANCE = 95.0
 
 
-@dataclass
-class Check:
-    name: str
-    level: str
-    detail: str
-
-
 def _connect() -> duckdb.DuckDBPyConnection:
-    con = duckdb.connect()
-    con.execute(f"SET temp_directory='{DATA_DIR / '_duckdb_tmp'}'")
+    con = connect()
     con.execute(f"CREATE VIEW eod AS SELECT * FROM read_parquet('{PARQUET_DIR}/eod/**/*.parquet')")
     con.execute(f"CREATE VIEW adj AS SELECT * FROM read_parquet('{PARQUET_DIR}/adjustments/**/*.parquet')")
     con.execute(f"CREATE VIEW splits AS SELECT * FROM read_parquet('{PARQUET_DIR}/splits.parquet')")
@@ -114,16 +106,33 @@ def run_checks(ledger: Ledger) -> list[Check]:
     nonpos, = con.execute(
         "SELECT COUNT(*) FROM eod WHERE close <= 0 OR open <= 0 OR high <= 0 OR low <= 0"
     ).fetchone()
-    checks.append(Check("non-positive prices", "PASS" if nonpos == 0 else "WARN",
+    # The build blanks these, so any survivor means the build did not run or did not
+    # finish -- a hard failure, not a data-quality note.
+    checks.append(Check("non-positive prices", "PASS" if nonpos == 0 else "FAIL",
                         f"{nonpos:,} bars ({nonpos/max(rows,1):.4%})"))
 
     ohlc, = con.execute(
         "SELECT COUNT(*) FROM eod WHERE high < low OR close > high OR close < low "
         "OR open > high OR open < low"
     ).fetchone()
-    checks.append(Check("OHLC consistency", "PASS" if ohlc == 0 else "WARN",
+    checks.append(Check("OHLC consistency", "PASS" if ohlc == 0 else "FAIL",
                         f"{ohlc:,} bars violate low <= {{open,close}} <= high "
                         f"({ohlc/max(rows,1):.4%})"))
+
+    # One ticker, two listings. A hole this long is the exchange reissuing a dead
+    # symbol, and it is the one splice shape the price-step rule cannot see, because
+    # the two companies need not trade at different levels. Left in, a fund launched
+    # in 2024 is tradeable in 2000.
+    gapped, = con.execute("""
+        WITH g AS (
+            SELECT security_id, date - LAG(date) OVER (PARTITION BY security_id
+                                                       ORDER BY date) AS d
+            FROM eod WHERE close IS NOT NULL
+        )
+        SELECT COUNT(DISTINCT security_id) FROM g WHERE d > 365
+    """).fetchone()
+    checks.append(Check("listing continuity", "PASS" if gapped == 0 else "FAIL",
+                        f"{gapped:,} securities have a >1y hole in their price history"))
 
     # Returns above +100% that no split on that date explains. A handful is
     # normal for microcaps; a large count means missing split data.
@@ -172,13 +181,21 @@ def run_checks(ledger: Ledger) -> list[Check]:
     # ---- corporate-action integrity ----------------------------------
     # Splits/dividends dated outside a security's own EOD range: the price
     # series and the action series describe different entities sharing a
-    # ticker. This is the ticker-recycling detector deferred from Phase 0.
-    # An event dated before a security's first bar is NOT evidence of splicing
-    # when it also predates the dataset floor: the price history genuinely
-    # extends further back, we simply do not store it. Counting those inflated
-    # this check from a true 13% to a spurious 42%.
-    recycled, total_with_events = con.execute(f"""
+    # ticker. This is the ticker-recycling detector deferred from Phase 0, and
+    # transform.prices.trim_events_to_listing is what answers it, so this must
+    # exempt exactly what the trim exempts or it reports its own policy back as
+    # a finding forever and hides the regression it exists to catch.
+    #
+    # Both exemptions are about the edges of the DATASET, not of the security.
+    # An event before a security's first bar is not evidence of splicing when
+    # that bar sits at the floor -- the price history genuinely runs further
+    # back, we just do not store it. (Counting those inflated this check from a
+    # true 13% to a spurious 42%.) An event after the last bar is not evidence
+    # either when the security is still trading in the final session: it is a
+    # declared future dividend, not somebody else's.
+    recycled, total_with_events = con.execute("""
         WITH span AS (SELECT security_id, MIN(date) lo, MAX(date) hi FROM eod GROUP BY 1),
+        edge AS (SELECT MIN(lo) AS floor_, MAX(hi) AS last_session FROM span),
         ev AS (
             SELECT security_id, date FROM splits
             UNION ALL SELECT security_id, date FROM divs
@@ -186,16 +203,16 @@ def run_checks(ledger: Ledger) -> list[Check]:
         flagged AS (
             SELECT e.security_id,
                    COUNT(*) FILTER (
-                       WHERE e.date > s.hi
-                          OR (e.date < s.lo AND e.date >= DATE '{START_DATE}')
+                       WHERE (e.date > s.hi AND s.hi < edge.last_session - 7)
+                          OR (e.date < s.lo AND s.lo > edge.floor_ + 365)
                    ) AS outside
-            FROM ev e JOIN span s USING (security_id) GROUP BY 1
+            FROM ev e JOIN span s USING (security_id), edge GROUP BY 1
         )
         SELECT COUNT(*) FILTER (WHERE outside > 0), COUNT(*) FROM flagged
     """).fetchone()
     share = recycled / max(total_with_events, 1)
     checks.append(Check("spliced / recycled tickers",
-                        "PASS" if share < 0.02 else "WARN",
+                        "PASS" if share < 0.02 else "FAIL",
                         f"{recycled:,}/{total_with_events:,} securities ({share:.1%}) have "
                         "corporate actions dated outside their own price history"))
 
@@ -235,18 +252,37 @@ def run_checks(ledger: Ledger) -> list[Check]:
                             f"adjusted_close includes dividends ({pct:.2f}% agree, "
                             "expected ~49%). Meaningful once dividends are downloaded"))
     else:
+        # Disagreement is not the same as being wrong, and the shortfall must not read
+        # as "N% of our prices are broken". Where the vendor never moved
+        # adjusted_close off close on a security that demonstrably split, the local
+        # rebuild is the correct series and the vendor is not -- which is the entire
+        # argument for storing raw prices. Naming that share keeps the number
+        # interpretable instead of alarming.
+        unadjusted, mismatched = con.execute("""
+            WITH s AS (
+                SELECT e.security_id,
+                       COUNT(*) FILTER (WHERE abs(e.close * a.price_factor
+                                                  - e.vendor_adjusted_close)
+                                             / e.vendor_adjusted_close > 0.01) AS bad,
+                       MAX(abs(e.vendor_adjusted_close - e.close) / e.close) AS moved
+                FROM eod e JOIN adj a USING (security_id, date)
+                WHERE e.vendor_adjusted_close > 0 AND e.close IS NOT NULL
+                GROUP BY 1
+            )
+            SELECT COUNT(*) FILTER (WHERE moved < 1e-9
+                                      AND security_id IN (SELECT security_id FROM splits)),
+                   COUNT(*)
+            FROM s WHERE bad > 0
+        """).fetchone()
         checks.append(Check("adjustment reconciliation",
                             "PASS" if pct >= MIN_PCT_WITHIN_TOLERANCE else "WARN",
                             f"{pct:.2f}% of bars within 1% of vendor adjusted_close "
-                            f"(target >= {MIN_PCT_WITHIN_TOLERANCE}%)"))
+                            f"(target >= {MIN_PCT_WITHIN_TOLERANCE}%); of "
+                            f"{mismatched:,} securities that disagree, {unadjusted:,} "
+                            "split without the vendor adjusting at all -- there the "
+                            "local rebuild is the correct series"))
 
     con.close()
     return checks
 
 
-def format_report(checks: list[Check]) -> str:
-    width = max(len(c.name) for c in checks)
-    lines = [f"  [{c.level}] {c.name.ljust(width)}  {c.detail}" for c in checks]
-    worst = "FAIL" if any(c.level == "FAIL" for c in checks) else \
-            "WARN" if any(c.level == "WARN" for c in checks) else "PASS"
-    return "\n".join(lines + ["", f"  gate: {worst}"])

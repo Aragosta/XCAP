@@ -69,7 +69,8 @@ def build_exchanges(ledger: Ledger, snapshot: date) -> dict:
 #: Biotest and forty others. Three signals that are: a reserved NASDAQ/Bats symbol,
 #: a name the exchange wrote about its own plumbing, and a name that is just the ticker
 #: repeated back (a real company always has a real name).
-_RESERVED_CODE = re.compile(r"^(Z[A-Z]ZZT|ZVZZCNX|ZXYZ(-[A-Z])?|ZBZX)$")
+_RESERVED_CODE = re.compile(
+    r"^(Z[A-Z]ZZ[TC](NX)?|ZXYZ(-[A-Z])?|ZBZX|ZTST|ZEXIT|ZIEXT)$")
 _TESTISH_CODE = re.compile(r"^([A-Z]?TEST(-[A-Z]{1,2})?|TEST[A-Z])(_old)?$")
 _TEST_NAME = re.compile(
     r"(NYSE|NASDAQ|NYSE ARCA|BATS|CBOE)\b.*TEST"
@@ -206,7 +207,11 @@ if __name__ == "__main__":  # self-check for the test-instrument filter
                        ("NTEST-B", "NTEST.B"), ("PTEST", "PTEST"), ("TESTF", "TESTF"),
                        ("TEST_old", "TEST"), ("ZTEST", "ZTEST"), ("ZVV", "LISTED TEST SYMBOL"),
                        ("ATEST", "Tick Pilot Test Control Common Stock"),
-                       ("CBO", "NYSE LISTED TEST STOCK FOR CTS AND CQS")]:
+                       ("CBO", "NYSE LISTED TEST STOCK FOR CTS AND CQS"),
+                       # Both of these reached the price data: ZTST printed a flat
+                       # 50.03 on 1,596 sessions, ZVZZC 13 distinct closes on 1,756.
+                       # Neither name says "test", so only the symbol gives them away.
+                       ("ZTST", "ZTST"), ("ZVZZC", "ZVZZC"), ("ZVZZCNX", "ZVZZCNX")]:
         assert _t(code, name), (code, name)
 
     # Real companies. Every one of these has "test" in the name or a testish ticker.
@@ -217,7 +222,12 @@ if __name__ == "__main__":  # self-check for the test-instrument filter
                        ("CBO", "Cobram Estate Olives Ltd"),
                        ("CBX", "Cortex Business Solutions Inc"),
                        ("2908", "Test Rite International Co Ltd"),
-                       ("ATEST", "Advanced Testing Corp")]:   # testish code, real name
+                       ("ATEST", "Advanced Testing Corp"),   # testish code, real name
+                       # Real Z-tickers that a wider symbol rule would eat. Several
+                       # carry no name at all in the vendor's delisted list, so
+                       # "name is just the ticker" cannot be the signal on its own.
+                       ("ZAR", "ZAR"), ("ZAL", "ZAL"), ("ZSP", "ZSP"),
+                       ("ZVOL", "ZVOL"), ("ZETA_old", "ZETA_old")]:
         assert not _t(code, name), (code, name)
 
     assert not _t("", "") and not _t(None, None)

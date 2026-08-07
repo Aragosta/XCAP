@@ -18,11 +18,10 @@ import json
 import logging
 from datetime import date, timedelta
 
-import duckdb
-
 from ..config import Config, PARQUET_DIR
+from ..db import query
 from ..eodhd.budget import BudgetExceeded
-from ..eodhd.client import EodhdClient, RequestSpec
+from ..eodhd.client import EodhdClient, RequestSpec, tally
 from ..ledger import Ledger
 
 log = logging.getLogger("xcap.phase2")
@@ -72,10 +71,6 @@ NONEQUITY_EXCHANGES = ["FOREX", "CC", "GBOND", "MONEY"]
 EARNINGS_START = date(2000, 1, 1)
 
 
-def _spec(endpoint: str, path: str, key: str, params: dict | None = None) -> RequestSpec:
-    return RequestSpec(endpoint=endpoint, path=path, key=key, params=params or {})
-
-
 def _month_ranges(start: date, end: date) -> list[tuple[date, date]]:
     out, cur = [], start.replace(day=1)
     while cur <= end:
@@ -86,13 +81,11 @@ def _month_ranges(start: date, end: date) -> list[tuple[date, date]]:
 
 
 def _tickers(exchange: str) -> list[str]:
-    con = duckdb.connect()
-    rows = con.execute(
+    rows = query(
         f"""SELECT api_ticker FROM read_parquet('{PARQUET_DIR / "securities.parquet"}')
             WHERE source_exchange = ? ORDER BY api_ticker""",
         [exchange],
-    ).fetchall()
-    con.close()
+    )
     return [r[0] for r in rows]
 
 
@@ -106,10 +99,7 @@ async def _run(client: EodhdClient, name: str, specs: list[RequestSpec]) -> dict
             log.warning("%s: stopping, %s", name, exc)
             counts["budget_exhausted"] = True
             break
-        for r in results:
-            counts[r.status if r.status in counts else "failed"] += 1
-            if r.from_cache:
-                counts["cached"] += 1
+        tally(results, counts)
         log.info("%-18s %d/%d  ok=%d empty=%d 404=%d fail=%d",
                  name, min(i + CHUNK, len(specs)), len(specs),
                  counts["ok"], counts["empty"], counts["not_found"], counts["failed"])
@@ -125,7 +115,7 @@ async def fetch_reference(cfg: Config, ledger: Ledger, *,
         # --- index constituents -------------------------------------
         if "indices" in which:
             res = await client.fetch(
-                _spec("exchange-symbol-list", "/exchange-symbol-list/INDX", "INDX.active")
+                RequestSpec("exchange-symbol-list", "/exchange-symbol-list/INDX", "INDX.active")
             )
             codes: list[str] = []
             if res.ok and res.body:
@@ -135,26 +125,24 @@ async def fetch_reference(cfg: Config, ledger: Ledger, *,
                         codes.append(c)
             log.info("indices matched: %d", len(codes))
             stats["indices"] = await _run(client, "indices", [
-                _spec("fundamentals-index", f"/fundamentals/{c}.INDX", f"{c}.INDX")
+                RequestSpec("fundamentals-index", f"/fundamentals/{c}.INDX", f"{c}.INDX")
                 for c in sorted(set(codes))
             ])
 
         # --- exchange trading hours and holidays --------------------
         if "exchange-details" in which:
-            con = duckdb.connect()
-            ex = [r[0] for r in con.execute(
+            ex = [r[0] for r in query(
                 f"SELECT code FROM read_parquet('{PARQUET_DIR / 'exchanges.parquet'}') ORDER BY code"
-            ).fetchall()]
-            con.close()
+            )]
             stats["exchange-details"] = await _run(client, "exchange-details", [
-                _spec("exchange-details", f"/exchange-details/{c}", c) for c in ex
+                RequestSpec("exchange-details", f"/exchange-details/{c}", c) for c in ex
             ])
 
         # --- historical earnings calendar ---------------------------
         if "earnings" in which:
             months = _month_ranges(EARNINGS_START, date.today())
             stats["earnings"] = await _run(client, "earnings", [
-                _spec("calendar-earnings", "/calendar/earnings",
+                RequestSpec("calendar-earnings", "/calendar/earnings",
                       f"{a.isoformat()}_{b.isoformat()}",
                       {"from": a.isoformat(), "to": b.isoformat()})
                 for a, b in months
@@ -163,7 +151,7 @@ async def fetch_reference(cfg: Config, ledger: Ledger, *,
         # --- macro indicators ---------------------------------------
         if "macro" in which:
             stats["macro"] = await _run(client, "macro", [
-                _spec("macro-indicator", f"/macro-indicator/{c}", f"{c}.{ind}",
+                RequestSpec("macro-indicator", f"/macro-indicator/{c}", f"{c}.{ind}",
                       {"indicator": ind})
                 for c in MACRO_COUNTRIES for ind in MACRO_INDICATORS
             ])
@@ -175,7 +163,7 @@ async def fetch_reference(cfg: Config, ledger: Ledger, *,
                 for t in _tickers(exch):
                     # Separate endpoint namespace from equity EOD so the two
                     # never mix in the raw archive or the parquet build.
-                    specs.append(_spec("eod-nonequity", f"/eod/{t}", t,
+                    specs.append(RequestSpec("eod-nonequity", f"/eod/{t}", t,
                                        {"period": "d", "order": "a"}))
             log.info("non-equity series: %d", len(specs))
             stats["noneq-eod"] = await _run(client, "noneq-eod", specs)

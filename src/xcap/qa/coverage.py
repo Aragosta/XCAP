@@ -11,9 +11,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-import duckdb
-
 from ..config import CATALOG_DIR, PARQUET_DIR
+from ..db import query
 from ..ledger import Ledger
 from ..universe import START_DATE, select
 
@@ -79,20 +78,14 @@ def build_report(ledger: Ledger) -> dict:
 
     artifacts = []
     for path in sorted(PARQUET_DIR.glob("*.parquet")):
-        con = duckdb.connect()
-        rows, = con.execute(f"SELECT COUNT(*) FROM read_parquet('{path}')").fetchone()
-        con.close()
+        rows, = query(f"SELECT COUNT(*) FROM read_parquet('{path}')")[0]
         artifacts.append({"name": path.name, "rows": rows,
                           "bytes": path.stat().st_size, "files": 1})
     for d in sorted(p for p in PARQUET_DIR.iterdir() if p.is_dir()):
         files = sorted(d.rglob("*.parquet"))
         if not files:
             continue
-        con = duckdb.connect()
-        rows, = con.execute(
-            f"SELECT COUNT(*) FROM read_parquet('{d}/**/*.parquet')"
-        ).fetchone()
-        con.close()
+        rows, = query(f"SELECT COUNT(*) FROM read_parquet('{d}/**/*.parquet')")[0]
         artifacts.append({"name": f"{d.name}/", "rows": rows,
                           "bytes": sum(f.stat().st_size for f in files),
                           "files": len(files)})

@@ -73,6 +73,12 @@ class Ledger:
     def close(self) -> None:
         self.conn.close()
 
+    def __enter__(self) -> "Ledger":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
     # ---- request records -------------------------------------------------
 
     def lookup(self, endpoint: str, key: str, phash: str) -> sqlite3.Row | None:
@@ -126,6 +132,15 @@ class Ledger:
                 "SELECT * FROM requests WHERE endpoint=? ORDER BY key", (endpoint,)
             )
         return cur.fetchall()
+
+    def resolved(self, endpoint: str) -> set[str]:
+        """Keys with a terminal answer -- ok, empty or 404 all mean 'do not re-spend'."""
+        cur = self.conn.execute(
+            "SELECT key FROM requests WHERE endpoint=? "
+            "AND status IN ('ok','empty','not_found')",
+            (endpoint,),
+        )
+        return {r["key"] for r in cur}
 
     def failures(self) -> list[sqlite3.Row]:
         cur = self.conn.execute(

@@ -26,9 +26,8 @@ import json
 import logging
 import shutil
 
-import duckdb
-
 from .config import CATALOG_DIR, DATA_DIR, PARQUET_DIR
+from .db import connect as _connect
 
 log = logging.getLogger("xcap.corpactions")
 
@@ -100,13 +99,6 @@ WINDOW
     w_cum AS (PARTITION BY security_id ORDER BY date
               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 """
-
-
-def _connect() -> duckdb.DuckDBPyConnection:
-    con = duckdb.connect()
-    con.execute(f"SET temp_directory='{DATA_DIR / '_duckdb_tmp'}'")
-    con.execute("SET preserve_insertion_order=false")
-    return con
 
 
 #: Used when dividends have not been downloaded yet. price_factor then equals

@@ -9,7 +9,6 @@ Reads only from the raw archive. Safe to re-run after the subscription ends.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import math
@@ -17,20 +16,20 @@ import shutil
 from datetime import date, timedelta
 from pathlib import Path
 
-import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from ..config import CATALOG_DIR, DATA_DIR, PARQUET_DIR
 from ..eodhd.client import EodhdClient
+from ..db import connect, query
 from ..ledger import Ledger
 from ..schemas.prices import DIVIDENDS, SPLITS
 from ..universe import START_DATE, select
+from . import ROWS_PER_STAGE_FILE, sha256_file
 
 log = logging.getLogger("xcap.transform.prices")
 
 STAGING = DATA_DIR / "_staging"
-ROWS_PER_STAGE_FILE = 4_000_000
 
 STAGE_EOD = pa.schema([
     pa.field("security_id", pa.int32()),
@@ -158,21 +157,82 @@ def _splice_cut(series: list[dict], split_days: set[str] = frozenset()) -> int:
     return len(series)
 
 
+def _sanitize(series: list[dict]) -> tuple[int, int]:
+    """Blank unusable bars and repair impossible ones. Returns (blanked, clamped).
+
+    A zero in OHLC is the vendor's "no print", not a price, and 15,581 of them sit
+    INSIDE a series where a return taken off close goes to -100% and then to infinity.
+    Blanked to null rather than deleted: same shape _neutralize_isolated_prints leaves
+    behind, so the trading date survives and everything downstream already reads it as
+    "did not print".
+
+    A high/low that fails to bracket open/close cannot be right, but nothing here can
+    say which of the four is the liar. Widening the range to the bar's own extremes is
+    the only repair that invents no number the session did not print.
+    """
+    blanked = clamped = 0
+    for bar in series:
+        o, h, l, c = (_as_float(bar.get(k)) for k in ("open", "high", "low", "close"))
+        if any(p is not None and p <= 0 for p in (o, h, l, c)):
+            for k in ("open", "high", "low", "close", "adjusted_close", "volume"):
+                bar[k] = None
+            blanked += 1
+            continue
+        live = [p for p in (o, h, l, c) if p is not None]
+        if live and (h, l) != (max(live), min(live)):
+            bar["high"], bar["low"] = max(live), min(live)
+            clamped += 1
+    return blanked, clamped
+
+
+#: A hole this long is not a trading halt, it is a second listing on the same symbol.
+#: The price rule below cannot see it: INTW.US carries a dead 2000 company at ~$10 and
+#: the 2024 GraniteShares 2x Long INTC ETF at ~$12, so there is no step to detect, only
+#: an 8,687-day hole between them.
+_MAX_GAP_DAYS = 365
+#: A segment this short beside such a hole is vendor debris, not a listing: SVRA.US
+#: prints once on 2000-07-26 and then not again until 2002-06-11.
+_STRAY_BARS = 5
+
+
+def _listing_span(series: list[dict]) -> tuple[int, int]:
+    """Half-open slice of `series` covering one listing.
+
+    Stray segments are dropped wherever they sit -- each one hands a backtest a
+    security that existed for a single day years before it was born. Of the segments
+    left, the EARLIEST is kept: the same forward-only cut as _splice_cut and for the
+    same reason, that dropping the early history would decide who was tradeable then
+    on what the ticker went on to do later.
+
+    When every segment is short the longest one is kept instead of the first, so the
+    result never still contains a hole. A genuinely short history is not debris and is
+    never emptied -- one uninterrupted run of two bars is one segment and survives
+    whole -- but a 7-bar ticker split either side of a 13-year hole is still two
+    listings, and only one of them can be it.
+    """
+    bounds = [0]
+    prev = None
+    for i, bar in enumerate(series):
+        d = _opt_date(bar.get("date"))
+        if d is None:
+            continue
+        if prev is not None and (d - prev).days > _MAX_GAP_DAYS:
+            bounds.append(i)
+        prev = d
+    bounds.append(len(series))
+
+    segments = list(zip(bounds, bounds[1:]))
+    for lo, hi in segments:
+        if hi - lo > _STRAY_BARS:
+            return lo, hi
+    return max(segments, key=lambda s: (s[1] - s[0], -s[0]))
+
+
 def _ticker_to_id() -> dict[str, int]:
-    con = duckdb.connect()
-    rows = con.execute(
+    rows = query(
         f"SELECT api_ticker, security_id FROM read_parquet('{PARQUET_DIR / 'securities.parquet'}')"
-    ).fetchall()
-    con.close()
+    )
     return {t: int(i) for t, i in rows}
-
-
-def _sha(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as fh:
-        for block in iter(lambda: fh.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
 
 
 def _as_float(value: object) -> float | None:
@@ -199,6 +259,10 @@ def build_eod(ledger: Ledger, start_date: str = START_DATE) -> dict:
     total_rows = 0
     dropped_pre_start = 0
     neutralized = 0
+    blanked = 0
+    clamped = 0
+    regapped = 0
+    dropped_other_listing = 0
     spliced_securities = 0
     dropped_after_splice = 0
     securities = 0
@@ -230,6 +294,25 @@ def build_eod(ledger: Ledger, start_date: str = START_DATE) -> dict:
             log.error("unreadable raw for %s: %s", ticker, exc)
             continue
 
+        # Apply the floor FIRST. Every rule below decides what one ticker's history
+        # is, and letting them see bars the dataset does not keep makes them answer
+        # for the wrong window: a symbol used 1995-1998 and reissued in 2005 has its
+        # earliest listing entirely below the floor, so preferring it discards the
+        # 2005 history and leaves the security with no bars at all.
+        n_bars = len(series)
+        series = [b for b in series if b.get("date") and b["date"] >= start_date]
+        dropped_pre_start += n_bars - len(series)
+
+        b, c = _sanitize(series)
+        blanked += b
+        clamped += c
+
+        lo, hi = _listing_span(series)
+        if (lo, hi) != (0, len(series)):
+            regapped += 1
+            dropped_other_listing += len(series) - (hi - lo)
+            series = series[lo:hi]
+
         neutralized += _neutralize_isolated_prints(series)
 
         cut = _splice_cut(series, split_days.get(ticker, frozenset()))
@@ -238,27 +321,19 @@ def build_eod(ledger: Ledger, start_date: str = START_DATE) -> dict:
             dropped_after_splice += len(series) - cut
             series = series[:cut]
 
-        kept = 0
         for bar in series:
-            d = bar.get("date")
-            if not d:
-                continue
-            if d < start_date:
-                dropped_pre_start += 1
-                continue
             cols["security_id"].append(sec_id)
             cols["api_ticker"].append(ticker)
-            cols["date"].append(d)
+            cols["date"].append(bar["date"])
             cols["open"].append(_as_float(bar.get("open")))
             cols["high"].append(_as_float(bar.get("high")))
             cols["low"].append(_as_float(bar.get("low")))
             cols["close"].append(_as_float(bar.get("close")))
             cols["vendor_adjusted_close"].append(_as_float(bar.get("adjusted_close")))
             cols["volume"].append(_as_float(bar.get("volume")))
-            kept += 1
 
-        total_rows += kept
-        if kept:
+        total_rows += len(series)
+        if series:
             securities += 1
         if len(cols["date"]) >= ROWS_PER_STAGE_FILE:
             flush()
@@ -267,18 +342,19 @@ def build_eod(ledger: Ledger, start_date: str = START_DATE) -> dict:
 
     flush()
     log.info("staged %d rows from %d securities (%d bars dropped before %s, "
+             "%d non-positive bars blanked, %d OHLC ranges clamped, "
+             "%d bars dropped as a second listing in %d securities, "
              "%d isolated prints neutralized, %d bars dropped after a splice in "
              "%d securities)",
-             total_rows, securities, dropped_pre_start, start_date, neutralized,
+             total_rows, securities, dropped_pre_start, start_date, blanked, clamped,
+             dropped_other_listing, regapped, neutralized,
              dropped_after_splice, spliced_securities)
 
     out = PARQUET_DIR / "eod"
     if out.exists():
         shutil.rmtree(out)
 
-    con = duckdb.connect()
-    con.execute(f"SET temp_directory='{DATA_DIR / '_duckdb_tmp'}'")
-    con.execute("SET preserve_insertion_order=false")
+    con = connect()
     con.execute(f"""
         COPY (
             SELECT security_id, api_ticker, CAST(date AS DATE) AS date,
@@ -301,6 +377,10 @@ def build_eod(ledger: Ledger, start_date: str = START_DATE) -> dict:
         "files": len(files),
         "bytes": sum(f.stat().st_size for f in files),
         "dropped_before_start": dropped_pre_start,
+        "blanked_non_positive": blanked,
+        "clamped_ohlc": clamped,
+        "second_listing_securities": regapped,
+        "dropped_second_listing": dropped_other_listing,
         "neutralized_isolated_prints": neutralized,
         "spliced_securities_truncated": spliced_securities,
         "dropped_after_splice": dropped_after_splice,
@@ -344,7 +424,7 @@ def build_splits(ledger: Ledger) -> dict:
     path = PARQUET_DIR / "splits.parquet"
     pq.write_table(table, path, compression="zstd", compression_level=9)
     return {"path": str(path.relative_to(DATA_DIR)), "rows": table.num_rows,
-            "bytes": path.stat().st_size, "sha256": _sha(path)}
+            "bytes": path.stat().st_size, "sha256": sha256_file(path)}
 
 
 def _opt_date(value: object) -> date | None:
@@ -383,13 +463,56 @@ def build_dividends(ledger: Ledger) -> dict:
     path = PARQUET_DIR / "dividends.parquet"
     pq.write_table(table, path, compression="zstd", compression_level=9)
     return {"path": str(path.relative_to(DATA_DIR)), "rows": table.num_rows,
-            "bytes": path.stat().st_size, "sha256": _sha(path)}
+            "bytes": path.stat().st_size, "sha256": sha256_file(path)}
 
 
-def _resolved(ledger: Ledger, endpoint: str) -> int:
-    """Securities with a terminal answer for `endpoint` -- ok, empty or 404."""
-    return sum(len(ledger.rows(endpoint, status=s))
-               for s in ("ok", "empty", "not_found"))
+def trim_events_to_listing(name: str) -> int:
+    """Drop events dated outside a security's own listing. Returns rows removed.
+
+    A ticker's event history covers every company that ever used the symbol, so once
+    the price series has been cut to a single listing the rest of that history belongs
+    to somebody else. CRY.US is the GraniteShares YieldBOOST CRCL ETF, first bar
+    2026-04-28, and it carried a dividend dated 2000-12-28 -- CryoLife's. 22,014
+    dividends and 2,368 splits sat under a security_id whose company had stopped
+    trading years earlier. None of them reached the adjustment factors, because there
+    is no bar on those dates for them to apply to, but they are another company's
+    payments filed under this one and an event study reads them.
+
+    Both edges of the DATASET are exempt, because at both the price history is ours
+    and not the security's. A security still trading in the last session keeps its
+    scheduled future events -- nothing has replaced it yet. A security whose first bar
+    sits at the dataset floor keeps everything before it: its real history runs back
+    past the floor and we simply do not store that part. Only where the price series
+    starts well inside the window is its own start known, and only there does an
+    earlier event have to belong to someone else.
+    """
+    path = PARQUET_DIR / f"{name}.parquet"
+    if not path.exists():
+        return 0
+
+    eod = PARQUET_DIR / "eod"
+    tmp = path.with_suffix(f".{name}.tmp")
+    con = connect()
+    before, = con.execute(f"SELECT COUNT(*) FROM read_parquet('{path}')").fetchone()
+    con.execute(f"""
+        COPY (
+            WITH span AS (
+                SELECT security_id, MIN(date) AS lo, MAX(date) AS hi
+                FROM read_parquet('{eod}/**/*.parquet') GROUP BY 1
+            ),
+            edge AS (SELECT MIN(lo) AS floor_, MAX(hi) AS last_session FROM span)
+            SELECT e.* FROM read_parquet('{path}') e
+            LEFT JOIN span s USING (security_id), edge
+            WHERE s.hi IS NULL                          -- no bars at all: nothing to contradict
+               OR ((e.date <= s.hi OR s.hi >= edge.last_session - 7)
+               AND (e.date >= s.lo OR s.lo <= edge.floor_ + {_MAX_GAP_DAYS}))
+            ORDER BY e.security_id, e.date
+        ) TO '{tmp}' (FORMAT PARQUET, COMPRESSION zstd, COMPRESSION_LEVEL 9)
+    """)
+    after, = con.execute(f"SELECT COUNT(*) FROM read_parquet('{tmp}')").fetchone()
+    con.close()
+    tmp.replace(path)
+    return before - after
 
 
 def build_all(ledger: Ledger, start_date: str = START_DATE) -> dict:
@@ -409,7 +532,7 @@ def build_all(ledger: Ledger, start_date: str = START_DATE) -> dict:
         ("splits", build_splits, "splits.parquet"),
         ("dividends", build_dividends, "dividends.parquet"),
     ):
-        done = _resolved(ledger, name)
+        done = len(ledger.resolved(name))
         if done >= universe_size:
             datasets[name] = builder(ledger)
         else:
@@ -419,6 +542,19 @@ def build_all(ledger: Ledger, start_date: str = START_DATE) -> dict:
             (PARQUET_DIR / filename).unlink(missing_ok=True)
 
     datasets["eod"] = build_eod(ledger, start_date)
+
+    # After the price series is cut to one listing, and only then, the event tables
+    # can be held to the same span.
+    for name in ("splits", "dividends"):
+        if name in datasets:
+            removed = trim_events_to_listing(name)
+            path = PARQUET_DIR / f"{name}.parquet"
+            datasets[name] |= {"dropped_other_listing": removed,
+                               "rows": datasets[name]["rows"] - removed,
+                               "bytes": path.stat().st_size,
+                               "sha256": sha256_file(path)}
+            log.info("%s: dropped %d events belonging to a later listing", name, removed)
+
     manifest = {"start_date": start_date, "datasets": datasets, "skipped": skipped}
     CATALOG_DIR.mkdir(parents=True, exist_ok=True)
     (CATALOG_DIR / "phase1_manifest.json").write_text(json.dumps(manifest, indent=2))
@@ -492,6 +628,51 @@ if __name__ == "__main__":  # self-check for the isolated-print screen
     s = _bars(0.09, 0.09, 0.09, 4000.0)
     s[2]["adjusted_close"] = None
     assert _splice_cut(s) == 3
+
+    # ---- bar sanitation ----
+    # A zero is the vendor's "no print", not a price. Blanked, not deleted.
+    s = _bars(10.0, 0.0, 10.2)
+    assert _sanitize(s) == (1, 0)
+    assert s[1]["close"] is None and s[1]["volume"] is None
+    assert s[1]["date"] == "2020-01-02" and s[0]["close"] == 10.0
+
+    # high/low that do not bracket open/close are widened to the bar's own extremes.
+    s = _bars(10.0)
+    s[0].update(open=9.0, high=10.0, low=9.5, close=11.0)   # open<low and close>high
+    assert _sanitize(s) == (0, 1)
+    assert s[0]["high"] == 11.0 and s[0]["low"] == 9.0
+    assert s[0]["open"] == 9.0 and s[0]["close"] == 11.0    # printed values untouched
+    assert _sanitize(_bars(10.0, 10.1)) == (0, 0)           # valid bars are left alone
+    assert _sanitize([]) == (0, 0)
+
+    # ---- listing spans ----
+    def _at(*pairs):
+        return [{"date": d, "open": c, "high": c, "low": c, "close": c,
+                 "adjusted_close": c, "volume": 100} for d, c in pairs]
+
+    # SVRA.US: one stray print in 2000, then the real series from 2002. The stray goes.
+    s = _at(("2000-07-26", 5.0), *[(f"2002-06-{d:02d}", 9.0) for d in range(11, 25)])
+    assert _listing_span(s) == (1, len(s))
+    # A stray at the END goes too.
+    s = _at(*[(f"2002-06-{d:02d}", 9.0) for d in range(11, 25)], ("2019-01-04", 3.0))
+    assert _listing_span(s) == (0, len(s) - 1)
+    # INTW.US shape: two real listings on one ticker at similar prices, so no price step
+    # for _splice_cut to see. Keep the earlier one, forward-only.
+    old = [(f"2000-0{m}-03", 10.0) for m in range(1, 10)]
+    new = [(f"2024-0{m}-03", 12.0) for m in range(1, 10)]
+    assert _listing_span(_at(*old, *new)) == (0, len(old))
+    assert _splice_cut(_at(*old, *new)) == len(old) + len(new)   # invisible to the price rule
+    # Continuous series are never cut, and a short whole history is never emptied.
+    assert _listing_span(_at(*old)) == (0, len(old))
+    assert _listing_span(_at(("2020-01-02", 1.0), ("2020-01-03", 1.0))) == (0, 2)
+    assert _listing_span([]) == (0, 0)
+    # INDZ_old.US: every segment is short, so there is no "substantial" one to prefer.
+    # Keeping the first would leave the hole in; the longest is kept instead.
+    s = _at(("2006-01-03", 1.0), ("2006-01-04", 1.0),
+            ("2019-06-03", 2.0), ("2019-06-04", 2.0), ("2019-06-05", 2.0))
+    assert _listing_span(s) == (2, 5)
+    # Equal-length short segments fall back to the earlier one.
+    assert _listing_span(_at(("2006-01-03", 1.0), ("2019-06-03", 2.0))) == (0, 1)
 
     # A 1:10 reverse split the vendor failed to absorb looks identical to a splice.
     # With the split on record the history is kept; without it, it is cut. The +/- 5

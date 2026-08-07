@@ -19,32 +19,26 @@ import logging
 import random
 from collections import Counter
 
-import duckdb
-
 from ..config import CATALOG_DIR, Config, PARQUET_DIR
+from ..db import query, quoted
 from ..eodhd.client import EodhdClient
 from ..jobs.probe_history import eod_probe
 from ..ledger import Ledger
+from ..universe import VENUES
 
 log = logging.getLogger("xcap.probe_delisting")
 
-TRADABLE_VENUES = ("NYSE", "NASDAQ", "AMEX", "NYSE MKT", "NYSE ARCA", "BATS")
-
 
 def sample_delisted(types: list[str], n: int, seed: int) -> tuple[list[dict], int]:
-    con = duckdb.connect()
-    venues = ",".join(f"'{v}'" for v in TRADABLE_VENUES)
-    typs = ",".join(f"'{t}'" for t in types)
-    rows = con.execute(
+    rows = query(
         f"""
         SELECT api_ticker, type, venue
         FROM read_parquet('{PARQUET_DIR / "securities.parquet"}')
         WHERE source_exchange='US' AND is_delisted
-          AND venue IN ({venues}) AND type IN ({typs})
+          AND venue IN ({quoted(VENUES)}) AND type IN ({quoted(types)})
         ORDER BY api_ticker
         """
-    ).fetchall()
-    con.close()
+    )
     population = len(rows)
     rng = random.Random(seed)
     picked = rng.sample(rows, min(n, population))

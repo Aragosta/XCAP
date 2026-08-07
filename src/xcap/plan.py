@@ -16,9 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import duckdb
-
 from .config import PARQUET_DIR, load_config
+from .db import query, quoted
 from .eodhd.budget import ENDPOINT_COST, Budget
 from .jobs.phase2_reference import (
     INDEX_WHITELIST, MACRO_COUNTRIES, MACRO_INDICATORS,
@@ -50,22 +49,11 @@ class Block:
         return self.remaining * self.cost_per
 
 
-def _done(ledger: Ledger, endpoint: str) -> set[str]:
-    """Keys already resolved -- ok, empty or 404 all mean 'do not re-spend'."""
-    keys: set[str] = set()
-    for status in ("ok", "empty", "not_found"):
-        keys |= {r["key"] for r in ledger.rows(endpoint, status=status)}
-    return keys
-
-
 def _nonequity_tickers() -> list[str]:
-    con = duckdb.connect()
-    marks = ",".join(f"'{e}'" for e in NONEQUITY_EXCHANGES)
-    rows = con.execute(
+    rows = query(
         f"""SELECT api_ticker FROM read_parquet('{PARQUET_DIR / "securities.parquet"}')
-            WHERE source_exchange IN ({marks})"""
-    ).fetchall()
-    con.close()
+            WHERE source_exchange IN ({quoted(NONEQUITY_EXCHANGES)})"""
+    )
     return [r[0] for r in rows]
 
 
@@ -79,7 +67,7 @@ def build_blocks(ledger: Ledger, *, split_by_venue: bool = False) -> list[Block]
 
     for endpoint, label in (("eod", "Equity EOD"), ("splits", "Equity splits"),
                             ("dividends", "Equity dividends")):
-        done = _done(ledger, endpoint)
+        done = ledger.resolved(endpoint)
         b = Block(label, endpoint, len(universe),
                   sum(1 for s in universe if s.api_ticker in done),
                   ENDPOINT_COST.get(endpoint, 1))
@@ -95,30 +83,28 @@ def build_blocks(ledger: Ledger, *, split_by_venue: bool = False) -> list[Block]
                 ))
         blocks.append(b)
 
-    idx_done = _done(ledger, "fundamentals-index")
+    idx_done = ledger.resolved("fundamentals-index")
     blocks.append(Block("Index constituents", "fundamentals-index",
                         len(INDEX_WHITELIST) + 15, len(idx_done), 10,
                         "whitelist + SP500-/DJ- prefixes; total approximate"))
 
-    con = duckdb.connect()
-    n_exch, = con.execute(
+    n_exch, = query(
         f"SELECT COUNT(*) FROM read_parquet('{PARQUET_DIR / 'exchanges.parquet'}')"
-    ).fetchone()
-    con.close()
+    )[0]
     blocks.append(Block("Exchange hours + holidays", "exchange-details",
-                        n_exch, len(_done(ledger, "exchange-details")), 1))
+                        n_exch, len(ledger.resolved("exchange-details")), 1))
 
     blocks.append(Block("Earnings calendar", "calendar-earnings",
                         _month_count(EARNINGS_START, date.today()),
-                        len(_done(ledger, "calendar-earnings")), 1,
+                        len(ledger.resolved("calendar-earnings")), 1,
                         "monthly chunks"))
 
     blocks.append(Block("Macro indicators", "macro-indicator",
                         len(MACRO_COUNTRIES) * len(MACRO_INDICATORS),
-                        len(_done(ledger, "macro-indicator")), 10,
+                        len(ledger.resolved("macro-indicator")), 10,
                         f"{len(MACRO_COUNTRIES)} regions x {len(MACRO_INDICATORS)} series"))
 
-    fund_done = _done(ledger, "fundamentals")
+    fund_done = ledger.resolved("fundamentals")
     fb = Block("Equity fundamentals", "fundamentals", len(universe),
                sum(1 for s in universe if s.api_ticker in fund_done),
                ENDPOINT_COST["fundamentals"], "per-symbol; bulk endpoint is 403")
@@ -132,7 +118,7 @@ def build_blocks(ledger: Ledger, *, split_by_venue: bool = False) -> list[Block]
     blocks.append(fb)
 
     neq = _nonequity_tickers()
-    neq_done = _done(ledger, "eod-nonequity")
+    neq_done = ledger.resolved("eod-nonequity")
     blocks.append(Block("Non-equity EOD", "eod-nonequity", len(neq),
                         sum(1 for t in neq if t in neq_done), 1,
                         "/".join(NONEQUITY_EXCHANGES)))

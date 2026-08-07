@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import duckdb
-
 from .config import PARQUET_DIR
+from .db import query, quoted
 
 #: Real exchange listings. Excludes OTC tiers (PINK, OTCQB, OTCGREY, ...) and
 #: NMFQS mutual-fund quote lines, which together make up two thirds of the raw
@@ -36,10 +35,6 @@ class Security:
     is_delisted: bool
 
 
-def _quoted(values: tuple[str, ...]) -> str:
-    return ",".join(f"'{v}'" for v in values)
-
-
 def select(*, exchange: str = "US") -> list[Security]:
     """Every security in the Phase 1 universe, delisted included.
 
@@ -47,17 +42,15 @@ def select(*, exchange: str = "US") -> list[Security]:
     fetch time: deciding membership from data you have not downloaded yet
     rebuilds the exact survivorship bias this universe exists to avoid.
     """
-    con = duckdb.connect()
-    rows = con.execute(
+    rows = query(
         f"""
         SELECT security_id, api_ticker, type, venue, is_delisted
         FROM read_parquet('{PARQUET_DIR / "securities.parquet"}')
         WHERE source_exchange = ?
-          AND venue IN ({_quoted(VENUES)})
-          AND type  IN ({_quoted(TYPES)})
+          AND venue IN ({quoted(VENUES)})
+          AND type  IN ({quoted(TYPES)})
         ORDER BY security_id
         """,
         [exchange],
-    ).fetchall()
-    con.close()
+    )
     return [Security(int(a), b, c, d, bool(e)) for a, b, c, d, e in rows]

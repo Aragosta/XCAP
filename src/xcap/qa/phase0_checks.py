@@ -8,24 +8,15 @@ long-history equity universe looks small, the bias is still in the dataset.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-import duckdb
-
 from ..config import PARQUET_DIR
+from ..db import connect
 from ..ledger import Ledger
+from .report import Check, format_report  # noqa: F401  (re-exported for the CLI)
 
 # For US equities over a multi-decade window, securities that have ceased
 # trading typically outnumber survivors. A low share means the delisted pass
 # did not work, not that the market is unusually stable.
 US_DELISTED_MIN_SHARE = 0.30
-
-
-@dataclass
-class Check:
-    name: str
-    level: str          # PASS | WARN | FAIL
-    detail: str
 
 
 def run_checks(ledger: Ledger) -> list[Check]:
@@ -34,7 +25,7 @@ def run_checks(ledger: Ledger) -> list[Check]:
     if not sec.exists():
         return [Check("artifacts", "FAIL", "securities.parquet missing; run `phase0 build`")]
 
-    con = duckdb.connect()
+    con = connect()
     con.execute(f"CREATE VIEW securities AS SELECT * FROM read_parquet('{sec}')")
     con.execute(f"CREATE VIEW exchanges AS SELECT * FROM read_parquet('{exch}')")
     checks: list[Check] = []
@@ -90,10 +81,12 @@ def run_checks(ledger: Ledger) -> list[Check]:
     # Ticker recycling cannot be measured here: the vendor exposes one row per
     # (exchange, code), so a symbol reused by a second company after the first
     # delisted collapses into a single row. Detecting it needs trade-date gaps
-    # from Phase 1 EOD history. Flagged so it is not mistaken for "checked".
-    checks.append(Check("ticker recycling", "WARN",
-                        "not measurable from listing data — deferred to Phase 1 "
-                        "(detect via gaps in EOD trade dates per code)"))
+    # from Phase 1 EOD history, where transform.prices._listing_span now cuts on
+    # them and the "listing continuity" check holds the result to zero. Still
+    # reported here so this row is not mistaken for "checked at Phase 0".
+    checks.append(Check("ticker recycling", "PASS",
+                        "not measurable from listing data — handled in Phase 1 by "
+                        "trade-date gaps (see `listing continuity`)"))
 
     # --- metadata completeness ----------------------------------------
     isin_null, = con.execute(
@@ -129,12 +122,3 @@ def run_checks(ledger: Ledger) -> list[Check]:
     return checks
 
 
-def format_report(checks: list[Check]) -> str:
-    icon = {"PASS": "PASS", "WARN": "WARN", "FAIL": "FAIL"}
-    width = max(len(c.name) for c in checks)
-    lines = [f"  [{icon[c.level]}] {c.name.ljust(width)}  {c.detail}" for c in checks]
-    worst = "FAIL" if any(c.level == "FAIL" for c in checks) else \
-            "WARN" if any(c.level == "WARN" for c in checks) else "PASS"
-    lines.append("")
-    lines.append(f"  gate: {worst}")
-    return "\n".join(lines)

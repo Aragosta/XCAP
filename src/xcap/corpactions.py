@@ -35,7 +35,11 @@ log = logging.getLogger("xcap.corpactions")
 _FACTOR_SQL = """
 WITH bars AS (
     SELECT security_id, date, close,
-           LAG(close) OVER (PARTITION BY security_id ORDER BY date) AS prev_close
+           -- IGNORE NULLS: the price build blanks isolated bad prints, and a NULL
+           -- prev_close would otherwise drop the dividend on the following session.
+           -- The last real close is the right denominator either way.
+           LAG(close IGNORE NULLS) OVER (PARTITION BY security_id ORDER BY date)
+               AS prev_close
     FROM read_parquet('{eod}/**/*.parquet')
 ),
 split_f AS (
@@ -46,22 +50,36 @@ split_f AS (
     WHERE ratio IS NOT NULL AND ratio > 0
     GROUP BY 1, 2
 ),
+div_matched AS (
+    -- The ex-date is not always a trading day for the specific security
+    -- (illiquid gaps; and once for the whole market -- NYSE was closed
+    -- 2001-09-11 through 09-16). An exact-date join silently drops those
+    -- events rather than erroring, which understates the factor with no
+    -- visible trace. ASOF to the next available bar within a week recovers
+    -- them; beyond a week the gap is either a dead security or a future
+    -- scheduled dividend past the end of our EOD data, and dropping is
+    -- correct in both cases -- there is no bar left to apply it to, or
+    -- applying it would be look-ahead.
+    SELECT d.security_id, b.date AS date,
+           COALESCE(d.unadjusted_value, d.value) AS val, b.prev_close
+    FROM read_parquet('{dividends}') d
+    ASOF JOIN bars b ON d.security_id = b.security_id AND b.date >= d.date
+    WHERE b.date - d.date <= 7
+      AND COALESCE(d.unadjusted_value, d.value) IS NOT NULL
+      AND b.prev_close IS NOT NULL AND b.prev_close > 0
+      AND COALESCE(d.unadjusted_value, d.value) > 0
+      -- Guard against bad vendor rows implying a >=95% yield in one payment,
+      -- which would produce a non-positive or absurd factor.
+      AND COALESCE(d.unadjusted_value, d.value) / b.prev_close < 0.95
+),
 div_f AS (
     -- The dividend must be expressed in the same share terms as the price it
     -- is divided by. close here is RAW (unadjusted for splits), so it pairs
     -- with unadjusted_value, not with value -- value is already restated into
     -- post-split terms and would understate the factor for any security that
     -- split after the payment.
-    SELECT d.security_id, d.date,
-           exp(SUM(ln(1.0 - COALESCE(d.unadjusted_value, d.value) / b.prev_close))) AS f
-    FROM read_parquet('{dividends}') d
-    JOIN bars b USING (security_id, date)
-    WHERE COALESCE(d.unadjusted_value, d.value) IS NOT NULL
-      AND b.prev_close IS NOT NULL AND b.prev_close > 0
-      AND COALESCE(d.unadjusted_value, d.value) > 0
-      -- Guard against bad vendor rows implying a >=95% yield in one payment,
-      -- which would produce a non-positive or absurd factor.
-      AND COALESCE(d.unadjusted_value, d.value) / b.prev_close < 0.95
+    SELECT security_id, date, exp(SUM(ln(1.0 - val / prev_close))) AS f
+    FROM div_matched
     GROUP BY 1, 2
 ),
 events AS (

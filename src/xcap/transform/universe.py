@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from datetime import date
 from pathlib import Path
 
@@ -59,6 +60,53 @@ def build_exchanges(ledger: Ledger, snapshot: date) -> dict:
     return _write(table, PARQUET_DIR / "exchanges.parquet")
 
 
+#: Exchange test instruments. NASDAQ publishes ZVZZT/ZWZZT/ZXZZT, NYSE ATEST-*/NTEST-*,
+#: Bats ZBZX and so on purely to exercise market-data plumbing. They carry synthetic
+#: prices (ZWZZT printed 0.0047 -> 120,490.73 in one session) and a liquidity screen
+#: selects for them, so they must never reach a backtest.
+#:
+#: "test" in the name is not the signal -- that catches Advantest, Aehr Test Systems,
+#: Biotest and forty others. Three signals that are: a reserved NASDAQ/Bats symbol,
+#: a name the exchange wrote about its own plumbing, and a name that is just the ticker
+#: repeated back (a real company always has a real name).
+_RESERVED_CODE = re.compile(r"^(Z[A-Z]ZZT|ZVZZCNX|ZXYZ(-[A-Z])?|ZBZX)$")
+_TESTISH_CODE = re.compile(r"^([A-Z]?TEST(-[A-Z]{1,2})?|TEST[A-Z])(_old)?$")
+_TEST_NAME = re.compile(
+    r"(NYSE|NASDAQ|NYSE ARCA|BATS|CBOE)\b.*TEST"
+    r"|LISTED TEST|TEST STOCK|TEST CONTROL|TEST INSTRUMENT|TE?ST SECURITY|TEST SYMBOL",
+    re.I,
+)
+
+
+def _is_test_instrument(rec: dict) -> bool:
+    code = rec.get("code") or ""
+    name = rec.get("name") or ""
+    if _RESERVED_CODE.match(code) or _TEST_NAME.search(name):
+        return True
+    # A testish code alone is not enough (ZTEST Electronics is a real company), so
+    # require the name to add nothing beyond the ticker itself.
+    return bool(_TESTISH_CODE.match(code) and _squash(name) == _squash(code))
+
+
+def _squash(s: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", s.upper()).removesuffix("OLD")
+
+
+def _existing_ids() -> dict[tuple[str, str], int]:
+    """(source_exchange, code) -> security_id from the previous build, if any.
+
+    securities.parquet is its own id registry: there is no separate state file to
+    lose, and a rebuild from an unchanged archive is a no-op.
+    """
+    path = PARQUET_DIR / "securities.parquet"
+    if not path.exists():
+        return {}
+    t = pq.read_table(path, columns=["source_exchange", "code", "security_id"])
+    return {(e, c): int(i) for e, c, i in
+            zip(t["source_exchange"].to_pylist(), t["code"].to_pylist(),
+                t["security_id"].to_pylist())}
+
+
 def build_securities(ledger: Ledger, snapshot: date) -> dict:
     """Merge every active/delisted ticker list into one deduplicated universe."""
     rows = ledger.rows("exchange-symbol-list", status="ok")
@@ -107,11 +155,26 @@ def build_securities(ledger: Ledger, snapshot: date) -> dict:
                 if rec[dst] in (None, "") and sec.get(src):
                     rec[dst] = sec[src]
 
-    # Deterministic ordering, so security_id is stable across rebuilds of the
-    # same raw archive.
+    # security_id must survive a universe refresh. A bare enumerate() over the sorted
+    # universe is a POSITION, not an identity: one new ticker inserted alphabetically
+    # shifts every id after it, and any table built before the refresh (eod, splits,
+    # dividends) silently starts pointing at a different company. That happened here
+    # once already — a 07-31 price build against an 08-04 universe put all 31,513
+    # tickers on the wrong id. So carry existing ids forward and only ever append.
     records = sorted(merged.values(), key=lambda r: (r["source_exchange"], r["code"]))
-    for i, rec in enumerate(records, start=1):
-        rec["security_id"] = i
+    n_before = len(records)
+    records = [r for r in records if not _is_test_instrument(r)]
+    if n_before != len(records):
+        log.info("dropped %d exchange test instruments", n_before - len(records))
+
+    known = _existing_ids()
+    next_id = max(known.values(), default=0) + 1
+    for rec in records:
+        key = (rec["source_exchange"], rec["code"])
+        if key not in known:
+            known[key] = next_id
+            next_id += 1
+        rec["security_id"] = known[key]
         rec["is_delisted"] = rec["listed_delisted"] and not rec["listed_active"]
         rec["snapshot_date"] = snapshot
 
@@ -132,3 +195,30 @@ def build_all(ledger: Ledger, snapshot: date | None = None) -> dict:
     CATALOG_DIR.mkdir(parents=True, exist_ok=True)
     (CATALOG_DIR / "phase0_manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
+
+
+if __name__ == "__main__":  # self-check for the test-instrument filter
+    def _t(code, name):
+        return _is_test_instrument({"code": code, "name": name})
+
+    for code, name in [("ZVZZT", "NASDAQ TEST STOCK"), ("ZBZX", "Bats Listed Test"),
+                       ("ZXYZ-A", "NASDAQ SYMBOLOGY TEST"), ("ATEST-A", "ATEST-A"),
+                       ("NTEST-B", "NTEST.B"), ("PTEST", "PTEST"), ("TESTF", "TESTF"),
+                       ("TEST_old", "TEST"), ("ZTEST", "ZTEST"), ("ZVV", "LISTED TEST SYMBOL"),
+                       ("ATEST", "Tick Pilot Test Control Common Stock"),
+                       ("CBO", "NYSE LISTED TEST STOCK FOR CTS AND CQS")]:
+        assert _t(code, name), (code, name)
+
+    # Real companies. Every one of these has "test" in the name or a testish ticker.
+    for code, name in [("ADTTF", "Advantest Corporation"), ("AEHR", "Aehr Test Systems"),
+                       ("BIO", "Biotest Aktiengesellschaft"), ("USER", "User Testing Inc"),
+                       ("ZTSTF", "ZTEST Electronics Inc"), ("INTT", "inTest Corporation"),
+                       ("HSCS", "Heart Test Laboratories Inc. Common Stock"),
+                       ("CBO", "Cobram Estate Olives Ltd"),
+                       ("CBX", "Cortex Business Solutions Inc"),
+                       ("2908", "Test Rite International Co Ltd"),
+                       ("ATEST", "Advanced Testing Corp")]:   # testish code, real name
+        assert not _t(code, name), (code, name)
+
+    assert not _t("", "") and not _t(None, None)
+    print("universe self-check ok")

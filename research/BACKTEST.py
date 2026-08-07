@@ -286,7 +286,9 @@ def _tail_mean(sorted_vals: np.ndarray, pct: float) -> float:
     """Mean of the worst `1-pct` fraction of an ascending-sorted array (CVaR / CDaR)."""
     if len(sorted_vals) == 0:
         return np.nan
-    k = int(np.ceil((1.0 - pct) * len(sorted_vals)))
+    # 1.0 - 0.95 is 0.050000000000000044, so a bare ceil() takes one observation too
+    # many at every round length (6 of 100, 51 of 1000, 2 of 20) and dilutes the tail.
+    k = int(np.ceil((1.0 - pct) * len(sorted_vals) - 1e-9))
     tail = sorted_vals[:k] if 0 < k < len(sorted_vals) else sorted_vals
     return float(np.mean(tail))
 
@@ -446,6 +448,14 @@ def backtest(
     px = _as_prices_df(prices).sort_index()
     if px.shape[0] == 0 or px.shape[1] == 0:
         raise ValueError("`prices` is empty.")
+    # A repeated date injects a spurious zero-return row: it inflates `n`, deflates
+    # ann_return and rescales vol (a single dup tripled ann_vol in testing). It also
+    # makes get_loc return a slice, so a signal on that date dies with an obscure
+    # TypeError. Vendor panels do this — refuse rather than report a corrupt number.
+    if not px.index.is_unique:
+        dup = px.index[px.index.duplicated()].unique()
+        raise ValueError(f"`prices` has {len(dup)} duplicated date(s), first {dup[0]}. "
+                         "De-duplicate before backtesting.")
     _check_freq(px.index, float(freq))
 
     idx, cols = px.index, px.columns
@@ -460,8 +470,10 @@ def backtest(
     if signal_dates is None:
         signal_dates = idx.tolist()
     exec_w = {}
+    dropped = 0
     for ts in (pd.Timestamp(x) for x in signal_dates):
         if ts not in idx:
+            dropped += 1
             continue
         sp = idx.get_loc(ts)
         ep = sp + lag + 1
@@ -470,6 +482,17 @@ def backtest(
         row = w_vals[sp].copy()
         row[np.isnan(pv[ep - 1])] = 0.0              # can't trade without a fill price
         exec_w[ep] = row
+
+    # A rebalance date that is not a row of `prices` does not happen at all — the book
+    # just keeps drifting. Calendar month-ends land on weekends and holidays ~30% of the
+    # time, so this silently turns a monthly strategy into a much slower one and moves
+    # every reported number. Use the last TRADING day of each month, not `date_range`.
+    if dropped:
+        warnings.warn(
+            f"{dropped} of {len(signal_dates)} `signal_dates` are not rows of `prices` "
+            "and were dropped; those rebalances never happen.",
+            stacklevel=2,
+        )
 
     exec_rows = np.array(sorted(exec_w), dtype=np.int64)
     exec_slot = np.full(n_dates, -1, dtype=np.int64)
@@ -524,6 +547,25 @@ def backtest(
         rets_np[1:] -= 1.0
     rets_np[~np.isfinite(rets_np)] = np.nan
 
+    if delist_return is None:
+        # The default holds a vanished name at its last print and lets a later rebalance
+        # "sell" it there in full — a fictitious exit. On a survivorship-free panel this
+        # is the single largest inflator in this file, so it does not get to be quiet.
+        # It is still the default because the honest alternative needs a delisting
+        # RETURN this engine cannot invent: a bankruptcy is -100%, a takeover is a
+        # premium, and writing off every name that merely stops printing is a large bias
+        # in the other direction.
+        traded = np.isfinite(pv)
+        vanished = traded.any(axis=0) & (traded[::-1].argmax(axis=0) > 0)
+        n_v = int((vanished & (w_vals != 0.0).any(axis=0)).sum())
+        if n_v:
+            warnings.warn(
+                f"{n_v} held name(s) stop printing before the end of `prices` and are "
+                "held flat: no delisting is modelled and the run is biased HIGH. "
+                "Pass `delist_return` to book the write-off.",
+                stacklevel=2,
+            )
+
     if delist_return is not None:
         # A name whose price stops for good is currently carried at its last print and
         # later "sold" there — a bankruptcy and a takeunder both come back as 0%. Book
@@ -545,8 +587,10 @@ def backtest(
                                     side="right") - 1
             gone = (last >= 0) & (last < n_dates - 1)
         else:
-            # No dates given: fall back to the last print, which is what the vendor
-            # data supports (EODHD has no delisting-date field) but which cannot tell a
+            # No dates given: fall back to the last print. Prefer passing `delist_dates`
+            # — EODHD DOES carry a delisting date, in fundamentals General.DelistedDate
+            # (populated for ~100% of flagged names, median 0 days from the last print).
+            # The last-print fallback cannot tell a
             # delisting from the end of your download — a name that merely goes quiet
             # before the panel ends is written off too. Pass `delist_dates` from the
             # full history, and restrict `delist_return` to a Series of names actually
@@ -816,7 +860,10 @@ if __name__ == "__main__":
         index=dates, columns=[f"A{i}" for i in range(6)],
     )
     dv = pd.DataFrame(rng.uniform(1e6, 2e8, size=px.shape), index=dates, columns=px.columns)
-    month_ends = px.resample("ME").last().index.intersection(px.index)
+    # Last TRADING day of each month. `resample("ME").index.intersection(px.index)` is
+    # the tempting one-liner and is wrong: it keeps only the months whose calendar end
+    # happens to be a trading day, silently dropping ~30% of the rebalances.
+    month_ends = px.index[~px.index.to_period("M").duplicated(keep="last")]
 
     # daily panel, monthly rebalance, equal weight
     w = pd.Series(1 / 6, index=px.columns)
@@ -992,6 +1039,43 @@ if __name__ == "__main__":
     r_full = backtest(w, px, raw_prices=px, **ckw)
     assert abs(r_holes["ann_commission_drag"] - r_full["ann_commission_drag"]) < 1e-12, \
         "unknown fill price skipped commission"
+
+    # holding a name that vanishes, with no delisting modelled, is the biggest inflator
+    # in this file — it must never be silent
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        backtest(dl_w, dl_px, signal_dates=[dl_dates[0]])
+    assert any("biased HIGH" in str(x.message) for x in caught), \
+        "a vanished name was held flat without warning"
+    # ...but a panel with no vanished names must stay quiet
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        backtest(pd.Series({"B": 1.0}), dl_px[["B"]], signal_dates=[dl_dates[0]])
+    assert not any("biased HIGH" in str(x.message) for x in caught), \
+        "warned about delisting on a panel with none"
+
+    # CVaR/CDaR take exactly the worst 5%, not 5% + 1. `1.0 - 0.95` is not 0.05, so a
+    # bare ceil() used to take 6 of 100 and 2 of 20 — a 2x error on short samples.
+    for n_obs, want in ((20, 1), (100, 5), (1000, 50)):
+        a = np.arange(float(n_obs))
+        assert abs(_tail_mean(a, 0.95) - a[:want].mean()) < 1e-12, \
+            f"_tail_mean took the wrong tail size at n={n_obs}"
+
+    # a repeated date corrupts every annualized metric; refuse it
+    dup_px = px.iloc[:50].reindex(px.index[:50].insert(10, px.index[9]))
+    try:
+        backtest(w, dup_px, signal_dates=[px.index[0]])
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a duplicated price date was accepted")
+
+    # a rebalance date that is not a trading day does not happen — say so out loud
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        backtest(w, px, signal_dates=[px.index[0], pd.Timestamp("2015-01-04")])  # a Sunday
+    assert any("signal_dates" in str(x.message) for x in caught), \
+        "a dropped rebalance date passed silently"
 
     # per-ticker borrow rates: a Series by ticker used to raise TypeError
     r_bf = backtest(pd.Series({c: -1 / 6 for c in px.columns}), px,

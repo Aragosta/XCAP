@@ -40,6 +40,26 @@ def dividends(ticker: str) -> RequestSpec:
                        params={"from": "1900-01-01"})
 
 
+def fundamentals(ticker: str) -> RequestSpec:
+    """Company fundamentals for one security. 10 calls — the most expensive
+    per-symbol endpoint we use, and the whole of Phase 3.
+
+    One request returns the entire document: General, Highlights, Valuation,
+    SharesStats, Technicals, SplitsDividends, AnalystRatings, Holders,
+    outstandingShares, Earnings and Financials (balance sheet, cash flow and
+    income statement, annual and quarterly). There is no way to ask for a
+    subset for fewer calls, so the archive keeps all of it.
+
+    ETFs return a different shape (`ETF_Data` with holdings and allocations
+    instead of `Financials`); both are archived verbatim and separated at build
+    time. Financials and Earnings are as-reported history, but Highlights,
+    Valuation, SharesStats and Technicals are *current* snapshots with no
+    vintage — see docs/DATA_RETRIEVAL.md §3.6 before using them as-of a past date.
+    """
+    return RequestSpec(endpoint="fundamentals", path=f"/fundamentals/{ticker}",
+                       key=ticker)
+
+
 def exchange_symbol_list(exchange_code: str, *, delisted: bool = False) -> RequestSpec:
     """Tickers for one exchange. 1 call.
 

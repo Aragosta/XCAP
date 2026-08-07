@@ -272,7 +272,7 @@ build and QA layers cannot disagree about what "the universe" means.
 | 2 | Historical earnings calendar | ~320 | queued |
 | 2 | Macro indicators, 33 regions × 39 series | 12,870 | queued |
 | 2 | Forex / crypto / bond / money EOD | 9,819 | queued |
-| 3 | Equity fundamentals | 325,250 | not started |
+| 3 | Equity fundamentals | 325,250 | 240 done (coverage probe), queued |
 
 Deliberately **out of scope** (cost far exceeds value at 10 calls/symbol or
 unbounded volume): intraday (~650k calls), insider Form 4 (~147k, only 4,800
@@ -293,6 +293,56 @@ blocks (NASDAQ, NYSE, ARCA, BATS, NYSE MKT, AMEX). Phase 3 fundamentals
 *requires* this mode: at 325,250 calls it spans ~4 days, so each day must end on
 complete venues.
 
+### Phase 3 blocks and measured coverage
+
+Blocks are **(type, venue), active and delisted together** — never active-only,
+which would rebuild survivorship bias inside a block that looks complete. Order
+is Common Stock → ETF → Preferred, venues largest first, so an early
+cancellation loses the least valuable part.
+
+390 symbols were probed before committing the rest (3,900 calls, all archived
+and counted toward Phase 3). **Every request returns HTTP 200 — no 404s, no
+failures.** The limit is not access, it is how far back the vendor's
+fundamentals archive goes.
+
+Restricting to plain root tickers (warrants `-WT`, units `-U` and old class
+lines `_old`/`1`/`2` carry no financials of their own — ~27% of delisted common
+stock, correctly empty rather than missing), coverage is a function of **when
+the company stopped trading**, not of whether it is delisted:
+
+| cohort | n | income stmt | quarterly | Earnings | shares o/s | market cap |
+|---|---:|---:|---:|---:|---:|---:|
+| active | 37 | 100% | 97% | 97% | 100% | 100% |
+| delisted, last trade 2020s | 63 | 92% | 90% | 78% | 68% | 73% |
+| delisted, last trade 2010s | 59 | 42% | 42% | 15% | 7% | 12% |
+| delisted, last trade 2000s | 56 | **2%** | 2% | 0% | 0% | 0% |
+
+A company that stopped trading in 2023 is covered as well as a live one (92% vs
+100%). One that stopped in 2005 is not covered at all. Delisted names look
+under-covered in aggregate only because they are concentrated in the past — the
+gap is archive depth, not listing status.
+
+**This is the same class of limit as §3.2, and it has the same consequence: a
+start date.** The 2000-01-01 floor is supported by EOD, which is complete for
+delisted names. It is *not* supported by fundamentals: before ~2015 there is
+too little to compute a cross-sectional fundamental factor on, and what exists
+is non-random — the survivors of the vendor's own archive.
+
+1. **Fundamental factors need a later floor than price factors.** Treat ~2015
+   as provisional for anything requiring a balance sheet, and measure it
+   properly (per-year coverage of the universe *live in that year*) before
+   fixing the number.
+2. **Never let a missing fundamental filter the universe.** Dropping
+   unscoreable names silently reintroduces the survivorship bias Phase 0 exists
+   to prevent. Missing is missing, not excluded.
+3. **Price-only factors keep the full 2000+ history.** Momentum, volatility and
+   liquidity come from Phase 1 EOD and are unaffected by any of this.
+
+Projected cost of the remaining ~32,100 symbols: **~321,000 calls**. Sizing from
+the sample gives ~5.5 GB raw JSON uncompressed (mean 170 KB/symbol, p95 848 KB),
+~1 GB on disk after zstd — likely less, since pre-2010 delistings return ~2 KB
+stubs.
+
 ---
 
 ## 7. Operating the pipeline
@@ -306,6 +356,8 @@ python -m xcap.cli phase0-fetch   /  phase0-build  /  phase0-qa
 python -m xcap.cli phase1-fetch   /  phase1-build  /  phase1-qa
 python -m xcap.cli phase1-adjust  /  phase1-reconcile
 python -m xcap.cli phase2-fetch --which indices exchange-details earnings macro noneq-eod
+python -m xcap.cli phase3-fetch --blocks-only                 # per-block state, spends nothing
+python -m xcap.cli phase3-fetch --only NASDAQ --max-calls 95000
 
 python -m xcap.cli probe-history      # measured EOD depth by stratum
 python -m xcap.cli probe-delisting    # test a start year for survivorship safety

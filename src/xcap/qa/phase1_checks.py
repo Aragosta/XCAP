@@ -141,6 +141,34 @@ def run_checks(ledger: Ledger) -> list[Check]:
                         f"{jumps:,} bars >100% up with no split on that date "
                         f"({jumps/max(rows,1):.4%})"))
 
+    # Isolated foreign prints: a whole OHLC bar belonging to a different instrument,
+    # spliced into a series and unwinding on the next bar. Security 270686, 2015-09-18:
+    # 519.17 -> 14,199.60 -> 519.17, volume 421,071 against a normal 500. Every other
+    # check here passes it -- the bar is internally consistent so OHLC consistency
+    # passes, split_factor is 1.0 so the corporate-action checks pass, and the jump
+    # check above sees it but cannot tell it from a real move. The reversal is the
+    # tell, and it is measured on the VENDOR ADJUSTED series so that a genuine split
+    # (already absorbed) never trips it.
+    reverting, = con.execute("""
+        WITH r AS (
+            SELECT security_id, date, vendor_adjusted_close AS p,
+                   LAG(vendor_adjusted_close) OVER w AS prev,
+                   LEAD(vendor_adjusted_close) OVER w AS next
+            FROM eod
+            WHERE vendor_adjusted_close > 0
+            WINDOW w AS (PARTITION BY security_id ORDER BY date)
+        )
+        SELECT COUNT(*) FROM r
+        WHERE prev > 0 AND next > 0
+          AND abs(ln(p / prev)) > 0.80
+          AND abs(ln(next / prev)) < 0.15 * abs(ln(p / prev))
+    """).fetchone()
+    checks.append(Check("isolated price prints",
+                        "PASS" if reverting == 0 else "WARN",
+                        f"{reverting:,} bars jump >2.2x and fully unwind on the next bar "
+                        f"({reverting/max(rows,1):.4%}); a liquidity screen SELECTS for "
+                        "these because the print inflates trailing dollar volume"))
+
     # ---- corporate-action integrity ----------------------------------
     # Splits/dividends dated outside a security's own EOD range: the price
     # series and the action series describe different entities sharing a

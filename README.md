@@ -113,7 +113,19 @@ Universe for Phase 1 onward is the **32,525 US tradable securities**
 - **Phase 2** — index constituents, exchange hours, earnings calendar, macro,
   forex/crypto/bond EOD · ~23.5k calls
 - **Phase 3** — fundamentals · 10 calls/symbol (`bulk-fundamentals` is **not**
-  entitled on All-In-One), ~325k calls across ~4 days in per-venue blocks
+  entitled on All-In-One), ~325k calls across ~4 days in per-venue blocks.
+  Coverage probed first (390 symbols): every request succeeds, but the archive
+  thins out going back — companies whose last trade was in the 2020s have
+  financials 92% of the time, 2010s 42%, 2000s **2%**. Delisted names are not
+  penalised for being delisted; they are penalised for being old. Fundamental
+  factors therefore need a later floor (~2015) than the 2000 floor that price
+  factors get — see [DATA_RETRIEVAL.md §6.1](docs/DATA_RETRIEVAL.md).
+
+```bash
+.venv/bin/python -m xcap.cli phase3-fetch --blocks-only        # state, costs nothing
+.venv/bin/python -m xcap.cli phase3-fetch --max-calls 95000    # one day's worth
+```
+
 - **Out of scope** — intraday (~650k calls), insider Form 4, news, historical
   market cap, options. Rationale in DATA_RETRIEVAL.md §6.
 

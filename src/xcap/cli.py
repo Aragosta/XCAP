@@ -5,6 +5,7 @@
     python -m xcap.cli phase0-qa        # bias + integrity gate
     python -m xcap.cli probe-history    # measure real EOD history depth on a sample
     python -m xcap.cli probe-delisting  # test a start year for survivorship-bias safety
+    python -m xcap.cli phase3-fetch     # equity fundamentals, 10 calls/symbol
     python -m xcap.cli coverage         # write PROGRESS.md: downloaded vs remaining
     python -m xcap.cli status           # ledger and budget summary
 """
@@ -25,6 +26,8 @@ from .corpactions import build_adjustments, reconcile
 from .jobs.phase0_universe import fetch_universe
 from .jobs.phase1_prices import fetch_prices
 from .jobs.phase2_reference import fetch_reference
+from .jobs.phase3_fundamentals import fetch_fundamentals
+from .jobs.phase3_fundamentals import report as phase3_report
 from .jobs.probe_delisting import probe_delisting, verdict
 from .jobs.probe_entitlements import probe_entitlements
 from .jobs.probe_history import probe_history
@@ -34,6 +37,7 @@ from .universe import START_DATE
 from .qa.phase0_checks import format_report, run_checks
 from .qa.coverage import write_report
 from .qa.phase1_checks import format_report as fmt1, run_checks as checks1
+from .transform.fundamentals import build_all as build_fundamentals
 from .transform.prices import build_all as build_prices
 from .transform.universe import build_all
 
@@ -218,6 +222,44 @@ def cmd_phase2_fetch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_phase3_fetch(args: argparse.Namespace) -> int:
+    ledger = Ledger()
+    if args.blocks_only:
+        try:
+            print(phase3_report(ledger, args.only))
+        finally:
+            ledger.close()
+        return 0
+
+    cfg = load_config()
+    print(f"token {cfg.redacted_token} | budget {cfg.daily_call_budget:,}/day | "
+          f"{cfg.rate_per_min} req/min | concurrency {cfg.concurrency}")
+    try:
+        stats = asyncio.run(fetch_fundamentals(
+            cfg, ledger, only=args.only, max_calls=args.max_calls,
+            sample=args.sample, seed=args.seed,
+        ))
+    finally:
+        print(f"\ncalls spent today: {ledger.spent_today(Budget.gmt_day()):,} "
+              f"/ {cfg.daily_call_budget:,}")
+        ledger.close()
+    print(json.dumps(stats, indent=2))
+    if stats["stopped"]:
+        print(f"\nStopped: {stats['stopped']}\nRe-run to resume; blocks already "
+              "resolved cost nothing.")
+    return 0
+
+
+def cmd_phase3_build(args: argparse.Namespace) -> int:
+    ledger = Ledger()
+    try:
+        manifest = build_fundamentals(ledger)
+    finally:
+        ledger.close()
+    print(json.dumps(manifest, indent=2))
+    return 0
+
+
 def cmd_coverage(args: argparse.Namespace) -> int:
     ledger = Ledger()
     try:
@@ -372,6 +414,23 @@ def main(argv: list[str] | None = None) -> int:
                    default=["indices", "exchange-details", "earnings", "macro", "noneq-eod"],
                    choices=["indices", "exchange-details", "earnings", "macro", "noneq-eod"])
     p.set_defaults(func=cmd_phase2_fetch)
+
+    p = sub.add_parser("phase3-fetch", help="fetch equity fundamentals (10 calls/symbol)")
+    p.add_argument("--only", nargs="+", default=None,
+                   help="restrict to blocks matching a venue or type "
+                        "(e.g. --only NASDAQ NYSE, or --only 'Common Stock')")
+    p.add_argument("--max-calls", type=int, default=None,
+                   help="cap what this run spends, leaving headroom under the daily cap")
+    p.add_argument("--sample", type=int, default=None,
+                   help="fetch a stratified sample across type x listing status instead "
+                        "of the universe, to measure vendor coverage before committing")
+    p.add_argument("--seed", type=int, default=13)
+    p.add_argument("--blocks-only", action="store_true",
+                   help="print per-block download state and exit, spending nothing")
+    p.set_defaults(func=cmd_phase3_fetch)
+
+    p = sub.add_parser("phase3-build", help="build fundamentals parquet from the raw archive")
+    p.set_defaults(func=cmd_phase3_build)
 
     p = sub.add_parser("coverage",
                        help="write data/catalog/PROGRESS.md: what is downloaded and what remains")

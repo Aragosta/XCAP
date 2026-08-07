@@ -24,6 +24,7 @@ from .jobs.phase2_reference import (
     INDEX_WHITELIST, MACRO_COUNTRIES, MACRO_INDICATORS,
     NONEQUITY_EXCHANGES, EARNINGS_START,
 )
+from .jobs.phase3_fundamentals import blocks as fundamentals_blocks
 from .ledger import Ledger
 from .universe import select
 
@@ -76,7 +77,8 @@ def build_blocks(ledger: Ledger, *, split_by_venue: bool = False) -> list[Block]
     universe = select()
     blocks: list[Block] = []
 
-    for endpoint, label in (("eod", "Equity EOD"), ("splits", "Equity splits")):
+    for endpoint, label in (("eod", "Equity EOD"), ("splits", "Equity splits"),
+                            ("dividends", "Equity dividends")):
         done = _done(ledger, endpoint)
         b = Block(label, endpoint, len(universe),
                   sum(1 for s in universe if s.api_ticker in done),
@@ -115,6 +117,19 @@ def build_blocks(ledger: Ledger, *, split_by_venue: bool = False) -> list[Block]
                         len(MACRO_COUNTRIES) * len(MACRO_INDICATORS),
                         len(_done(ledger, "macro-indicator")), 10,
                         f"{len(MACRO_COUNTRIES)} regions x {len(MACRO_INDICATORS)} series"))
+
+    fund_done = _done(ledger, "fundamentals")
+    fb = Block("Equity fundamentals", "fundamentals", len(universe),
+               sum(1 for s in universe if s.api_ticker in fund_done),
+               ENDPOINT_COST["fundamentals"], "per-symbol; bulk endpoint is 403")
+    # Always broken out: at 10 calls a symbol no single block fits one day, so
+    # the per-venue detail is the only actionable view of it.
+    for b in fundamentals_blocks(universe):
+        fb.subblocks.append(Block(b.name, "fundamentals", len(b.securities),
+                                  sum(1 for s in b.securities
+                                      if s.api_ticker in fund_done),
+                                  ENDPOINT_COST["fundamentals"]))
+    blocks.append(fb)
 
     neq = _nonequity_tickers()
     neq_done = _done(ledger, "eod-nonequity")

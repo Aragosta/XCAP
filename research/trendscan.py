@@ -67,8 +67,6 @@ assets, with an exact recompute every RESYNC bars to stop drift. 19M rows × 10 
 scan in ~3s; the whole build including the parquet write is ~40s.
 
     python research/trendscan.py build     # surface → data/_staging/trendscan.parquet
-    python research/trendscan.py diag      # score the reductions in reductions()
-    python research/trendscan.py           # both
 """
 from __future__ import annotations
 
@@ -87,15 +85,45 @@ OUT = "data/_staging/trendscan.parquet"
 GRID = np.array([5, 10, 21, 42, 63, 84, 126, 168, 210, 252], dtype=np.int64)
 EMIT = ("tb", "tc", "sd")
 
-HORIZONS = (1, 5, 21, 63)
-LAG = 1                                             # implementation lag, in bars.
-# Decide at close t, trade at close t+1, earn t+1 → t+1+h. Pairing a signal with the
-# return measured from its OWN close grants free instantaneous fills, and that bar is a
-# large slice of the half-life of anything fast. Matches BACKTEST.py's lag=1.
-SKIP = 21                                           # the "−1" of 12−1, for REDUCTIONS
-MIN_ADV = 1e6
-MIN_PRICE = 5.0
+HORIZONS = (1, 5, 21, 63)   # forward-return horizons written to the parquet
 RESYNC = 2048                                       # exact-recompute cadence, anti-drift
+
+# Bar integrity. The vendor EOD contains isolated bars belonging to a DIFFERENT
+# instrument — a whole OHLC row at ~27× the surrounding level, with its own volume, that
+# unwinds exactly on the next bar (security 270686, 2015-09-18: 519.17 → 14199.60 →
+# 519.17). The bar is internally consistent, so low ≤ {open,close} ≤ high passes it, and
+# the ADV screen actively *selects* for it: the spike inflates adv21 for 21 bars and
+# pulls the name into the liquid universe. 3,388 such bars across 299 of 5,604
+# securities; in the loss panel 665 rows of 6.66M carried 78% of Σy².
+#
+# Detected on ADJUSTED price and by REVERSAL, which is what makes it split-safe: a real
+# split is already in `adj` so it never shows here, and a *missed* split does not unwind.
+# Flagged bars are dropped, not interpolated — the price on those bars is unknown. Since
+# the move reverts, dropping leaves the level series continuous.
+BAD_SPIKE = 0.80       # |log return| a single bar must not exceed unexplained (≈ ×2.2)
+BAD_REVERT = 0.15      # ...and that unwinds to within this fraction of itself
+BAD_WINDOW = 3         # ...within this many bars (a spike can plateau before reverting)
+# The second defect is a LEVEL BREAK, and it is not repairable bar by bar either. Two
+# causes, one treatment:
+#
+#   missed corporate action — security 283067, 2004-07-30: 8.99 → 74.30 overnight
+#     (×8.26) with split_factor 1.0 and adv21 running 70M → 95M → 101M straight through.
+#     Dollar volume is continuous across it, which is the signature of a reverse split
+#     the adjustment factors never saw; a genuine +726% session spikes volume, not
+#     share count down.
+#   spliced / recycled ticker — security 258690 alternates a dead $0.005 stub
+#     (volume 0) with a real $4,700 name (volume 250k) on consecutive bars, and
+#     security 258234 resumes 2 years later at 4× the price. `phase1_checks` already
+#     names this: "the price series and the action series describe different companies
+#     that shared a symbol".
+#
+# Either way the price base changes, so bars before and after are not one series and no
+# window may span the break. They are CUT into separate series rather than dropped: the
+# data on both sides is fine, only its continuity is not. Dropping the securities whole
+# cost 3.89% of the panel for nothing.
+BAD_BREAK = 1.60       # |log return| that ends a series (≈ ×5 / −80%)
+BAD_GAP = 365          # ...as does a calendar gap of this many days (suspension, relist)
+MIN_SEG = 5            # segments shorter than the shortest rung carry no surface at all
 
 
 # ── kernels ─────────────────────────────────────────────────────────────────
@@ -190,6 +218,31 @@ def _fwd_returns(y, starts, ends, horizons, out):
 
 
 @njit(cache=True, parallel=True)
+def _bad_bars(y, starts, ends, spike, revert, window, out):
+    """Flag isolated price prints: a jump > `spike` in log that unwinds within `window`.
+
+    `y` is log adjusted price. For a bar t with |r_t| > spike, walk forward up to
+    `window` bars looking for the cumulative move to return to where it started. If it
+    does, every bar from t to the bar before the recovery is a spurious print.
+    """
+    for a in prange(starts.shape[0]):
+        s, e = starts[a], ends[a]
+        for t in range(s + 1, e):
+            r = y[t] - y[t - 1]
+            if r < spike and r > -spike:
+                continue
+            cum = r
+            for k in range(1, window + 1):
+                if t + k >= e:
+                    break
+                cum += y[t + k] - y[t + k - 1]
+                if abs(cum) < revert * abs(r):
+                    for j in range(t, t + k):
+                        out[j] = True
+                    break
+
+
+@njit(cache=True, parallel=True)
 def _roll_mean(x, starts, ends, win, out):
     for a in prange(starts.shape[0]):
         s, e = starts[a], ends[a]
@@ -215,6 +268,52 @@ def build(panel: str = PANEL, out_path: str = OUT, grid=GRID, emit=EMIT) -> pd.D
     b = np.flatnonzero(np.r_[True, sid[1:] != sid[:-1], True])
     starts, ends = b[:-1].copy(), b[1:].copy()
 
+    # Bar integrity, BEFORE anything is fitted or any target is measured. A spurious
+    # print corrupts every window that contains it (up to 252 bars of tb/tc/sd) and both
+    # legs of fwd{h}; there is no downstream place to repair it. See BAD_SPIKE.
+    t2 = time.time()
+    ly = np.log(df.adj.to_numpy(np.float64))
+    bad = np.zeros(len(df), dtype=np.bool_)
+    _bad_bars(ly, starts, ends, BAD_SPIKE, BAD_REVERT, BAD_WINDOW, bad)
+    n_bad, sec_bad = int(bad.sum()), df.security_id.to_numpy()[bad]
+    print(f"[build] bar integrity: dropped {n_bad:,} spurious prints "
+          f"({n_bad / len(df):.4%}) across {len(np.unique(sec_bad)):,} securities "
+          f"({time.time() - t2:.1f}s)", flush=True)
+    if n_bad:
+        df = df.loc[~bad].reset_index(drop=True)
+        sid = df.security_id.to_numpy()
+        b = np.flatnonzero(np.r_[True, sid[1:] != sid[:-1], True])
+        starts, ends = b[:-1].copy(), b[1:].copy()
+        ly = np.log(df.adj.to_numpy(np.float64))
+
+    # Whatever survives the bar rule and is still impossible is a level break. Cut the
+    # series there, so no rolling window and no fwd{h} ever spans it. Downstream code
+    # is unchanged: it already works on contiguous per-security blocks, and a cut is
+    # simply one more block boundary.
+    r = np.diff(ly, prepend=ly[0])
+    gap = np.diff(df.date.to_numpy("datetime64[D]").astype(np.int64), prepend=0)
+    price_cut, gap_cut = np.abs(r) > BAD_BREAK, gap > BAD_GAP
+    price_cut[starts] = gap_cut[starts] = False       # row 0 of a security differences
+    cut = price_cut | gap_cut                         # against the previous security
+    seg = np.cumsum(np.r_[True, sid[1:] != sid[:-1]] | cut)
+    b = np.flatnonzero(np.r_[True, seg[1:] != seg[:-1], True])
+    starts, ends = b[:-1].copy(), b[1:].copy()
+    n_cut = int(cut.sum())
+    short = (ends - starts) < MIN_SEG
+    print(f"[build] level breaks: {n_cut:,} cuts ({int(price_cut.sum()):,} "
+          f"price, {int(gap_cut.sum()):,} calendar) split {len(np.unique(sid)):,} "
+          f"securities into {len(starts):,} series; dropping {int(short.sum()):,} "
+          f"segments shorter than {MIN_SEG} bars", flush=True)
+    if short.any():
+        keep = np.ones(len(df), dtype=np.bool_)
+        for s, e in zip(starts[short], ends[short]):
+            keep[s:e] = False
+        df = df.loc[keep].reset_index(drop=True)
+        sid = df.security_id.to_numpy()
+        seg = seg[keep]
+        b = np.flatnonzero(np.r_[True, seg[1:] != seg[:-1], True])
+        starts, ends = b[:-1].copy(), b[1:].copy()
+
     # Log adjusted price, centred per asset. Slope and t are invariant to a level shift;
     # centring only keeps the rolling sums well conditioned.
     y = np.log(df.adj.to_numpy(np.float64))
@@ -239,15 +338,14 @@ def build(panel: str = PANEL, out_path: str = OUT, grid=GRID, emit=EMIT) -> pd.D
         "close": df.close.to_numpy(np.float32),
         "adv21": adv.astype(np.float32),
     })
-    # RAW. No skip baked in: skipped[t] == raw[t−SKIP], so any end-lag is one shift away
-    # (see `skip()`). The window length and the end-lag are two axes of one 2-D surface;
-    # hardcoding the second collapses it.
+    # RAW. No skip baked in — the window length and any end-lag are two axes of one
+    # 2-D surface; hardcoding the second collapses it.
     for name, A in zip(("tb", "tc", "sd"), (tb, tc, sd)):
         if name in emit:
             for j, L in enumerate(grid):
                 o[f"{name}_{L}"] = A[:, j].astype(np.float32)
-    # Targets, for the diagnostics only. Measured FROM t; the implementation lag is
-    # applied to the SIGNAL in the harness, so these stay convention-free.
+    # Targets, for downstream diagnostics. Measured FROM t; any implementation lag is
+    # applied to the SIGNAL by the consumer, so these stay convention-free.
     for i, h in enumerate(HORIZONS):
         o[f"fwd{h}"] = fwd[:, i].astype(np.float32)
 
@@ -257,258 +355,5 @@ def build(panel: str = PANEL, out_path: str = OUT, grid=GRID, emit=EMIT) -> pd.D
     return o
 
 
-# ── reductions ──────────────────────────────────────────────────────────────
-# A reduction turns the surface into something rankable. They live here, downstream of
-# the build, so that changing one costs a re-read and not a rescan.
-def surface(df: pd.DataFrame, kind: str, grid=GRID) -> np.ndarray:
-    """The (rows × rungs) matrix for one quantity."""
-    return df[[f"{kind}_{L}" for L in grid]].to_numpy(np.float64)
-
-
-def skip(df: pd.DataFrame, cols, k: int = SKIP) -> np.ndarray:
-    """End the window k bars early — the "−1" of 12−1. Reading the surface k rows back
-    is what turns a 12-month scan into a 12−1 scan: no rescan, one shift."""
-    return df.groupby("security_id", observed=True, sort=False)[list(cols)].shift(k) \
-             .to_numpy(np.float64)
-
-
-def rowmean(A: np.ndarray) -> np.ndarray:
-    """Ladder mean. Averages over however many rungs the asset's history supports —
-    see the listing-age note in the header."""
-    ok = np.isfinite(A)
-    cnt = ok.sum(axis=1)
-    return np.where(cnt > 0, np.where(ok, A, 0.0).sum(axis=1) / np.maximum(cnt, 1), np.nan)
-
-
-def argmax_abs(A: np.ndarray) -> np.ndarray:
-    """Value at argmax|·| across rungs — LdP's endogenous horizon. NOT a neutral
-    selector: |t| ∝ L^1.5 draws it toward the longest rung regardless of information."""
-    M = np.where(np.isfinite(A), np.abs(A), -1.0)
-    j = M.argmax(axis=1)
-    v = np.take_along_axis(A, j[:, None], axis=1)[:, 0]
-    return np.where(M.max(axis=1) >= 0.0, v, np.nan)
-
-
-def rung(df: pd.DataFrame, kind: str, L: int) -> np.ndarray:
-    return df[f"{kind}_{L}"].to_numpy(np.float64)
-
-
-# The reductions `diag` scores. This dict is a CHOICE, deliberately visible and
-# deliberately not in the build. Edit it freely; nothing downstream depends on it.
-#
-# THE SKIP IS NOT SYMMETRIC, and this is measured, not aesthetic:
-#   trend       WANTS the skip. Ending the window a month early removes short-horizon
-#               reversal from the slope estimate.
-#   curvature   is HURT by it. No-skip beats skip by +0.0072 IC at h21 (t 2.20) and
-#               +0.0087 at h63 (t 1.97) for the argmax, +0.0101 at h63 (t 2.20) for the
-#               ladder. Curvature is measuring the bend that is happening NOW.
-def reductions(df: pd.DataFrame, grid=GRID) -> dict:
-    tb_s = skip(df, [f"tb_{L}" for L in grid])
-    tc_r = surface(df, "tc", grid)
-    return {
-        "trend_top": tb_s[:, -1],                     # single longest rung, 12−1
-        "trend_lad": rowmean(tb_s),                   # ladder mean
-        "trend_am": argmax_abs(tb_s),                 # endogenous horizon
-        "ncurv_lad": -rowmean(tc_r),                  # ladder mean, no skip
-        "ncurv_am": -argmax_abs(tc_r),                # endogenous horizon
-    }
-
-
-# NOT the answer — the thing to beat, and it currently LOSES to its own trend leg.
-# Equal-weighting trend with curvature is significantly WORSE than trend alone at h1
-# (ΔIC −0.0038, t −3.57) and a wash at h21/h63, because equal weight over-allocates to
-# a leg that is ~9× weaker at h1 (0.0019 vs 0.0182). Curvature is nonetheless a real,
-# near-orthogonal bet (N_eff 1.91/2.00) that covers the trend leg's 2009-16 hole
-# (h21 IC 0.0153 vs the trend's 0.0121 there). So the open question is WEIGHTING and
-# horizon, not whether curvature works — and "equal weight beats every fitted
-# allocator" was never tested against the one-leg baseline until now.
-COMPOSITES = {"combo_ew": ["trend_top", "ncurv_lad"]}
-
-
-# ── evaluation harness ──────────────────────────────────────────────────────
-# Shared by diag() and the decisions scripts. Every IC in this project comes through
-# here, so a convention fixed here is fixed everywhere.
-def _nw_lag(h: int) -> int:
-    """Bartlett bandwidth for an h-overlapping series.
-
-    Overlapping forward returns induce an MA(h−1) in the IC series, so h−1 is the bare
-    MINIMUM that covers it and 1.5h is the usual conservative choice. This file used
-    `lag = h` — barely above the minimum, which understates the long-run variance and
-    inflates t most at h63, the horizon carrying the largest claims."""
-    return max(int(np.ceil(1.5 * h)), 1)
-
-
-def _nw_t(x: np.ndarray, lag: int) -> float:
-    """Newey-West t of the mean."""
-    x = x[np.isfinite(x)]
-    n = len(x)
-    if n < 30:
-        return np.nan
-    d = x - x.mean()
-    v = (d @ d) / n
-    for l in range(1, lag + 1):
-        v += 2.0 * (1.0 - l / (lag + 1.0)) * ((d[l:] @ d[:-l]) / n)
-    return np.nan if v <= 0 else x.mean() / np.sqrt(v / n)
-
-
-def apply_lag(df: pd.DataFrame, cols, lag: int = LAG) -> pd.DataFrame:
-    """Shift each signal forward `lag` bars WITHIN a security. In place.
-
-    Pairing signal(t) with the return measured FROM t grants execution at the very close
-    that produced the signal — free, instantaneous fills. BACKTEST.py's convention is
-    that a signal at t earns y[t+1+h] − y[t+1]; shifting the signal one bar and leaving
-    fwd where it is reproduces that exactly, without rebuilding the targets.
-
-    Must run BEFORE the liquidity screen — the screen drops rows and so breaks the bar
-    contiguity this shift depends on."""
-    if lag <= 0:
-        return df
-    df.sort_values(["security_id", "date"], inplace=True, kind="stable")
-    g = df.groupby("security_id", observed=True, sort=False)
-    df[list(cols)] = g[list(cols)].shift(lag)
-    return df
-
-
-def ic_series(df: pd.DataFrame, names, horizons=HORIZONS, composites=None):
-    """Cross-sectional Spearman IC per date → {(name, h): Series indexed by date}.
-
-    `composites` maps a name to a list of columns that are equal-weight averaged AFTER
-    ranking (ranks, not levels — the legs are on wildly different scales)."""
-    composites = composites or {}
-    base = list(dict.fromkeys(list(names) + [c for v in composites.values() for c in v]))
-    g = df.groupby("date", observed=True)
-    R = pd.DataFrame({c: g[c].rank(pct=True)
-                      for c in base + [f"fwd{h}" for h in horizons]})
-    for name, parts in composites.items():
-        R[name] = R[list(parts)].mean(axis=1)
-    k = df.date.to_numpy()
-    D = {c: R[c] - R[c].groupby(k, observed=True).transform("mean") for c in R.columns}
-
-    def ser(a, h):
-        x, yv = D[a], D[f"fwd{h}"]
-        num = (x * yv).groupby(k, observed=True).sum()
-        den = np.sqrt((x * x).groupby(k, observed=True).sum()
-                      * (yv * yv).groupby(k, observed=True).sum())
-        return (num / den).replace([np.inf, -np.inf], np.nan)
-
-    out = list(names) + list(composites)
-    return {(c, h): ser(c, h) for c in out for h in horizons}, R
-
-
-def ic_table(S, names, horizons=HORIZONS, indent="  ") -> None:
-    print(f"{indent}{'signal':16s}"
-          + "".join(f"{'IC_h' + str(h):>10s}{'t':>7s}" for h in horizons))
-    for c in names:
-        print(f"{indent}{c:16s}" + "".join(
-            f"{S[(c, h)].mean():10.4f}{_nw_t(S[(c, h)].to_numpy(), _nw_lag(h)):7.2f}"
-            for h in horizons), flush=True)
-
-
-def paired_table(S, pairs, horizons=HORIZONS, indent="  ") -> None:
-    """NW t of the DIFFERENCE series. Separate t-stats do not test whether a gap is
-    real: the IC series share dates and are ~0.8 correlated, so the paired difference is
-    far better determined than either level."""
-    for a, b in pairs:
-        d = {h: (S[(a, h)] - S[(b, h)]).dropna() for h in horizons}
-        print(f"{indent}{a:16s} − {b:16s}" + "".join(
-            f"{d[h].mean():10.4f}{_nw_t(d[h].to_numpy(), _nw_lag(h)):7.2f}"
-            for h in horizons))
-
-
-def load(out_path: str = OUT, grid=GRID, kinds=("tb", "tc"), lag: int = LAG) -> pd.DataFrame:
-    """Read the surface, apply the reductions, lag, then screen. Order matters — the
-    reductions need raw bar contiguity, and so does the lag, and the screen destroys it."""
-    t0 = time.time()
-    cols = [f"{k}_{L}" for k in kinds for L in grid]
-    df = pd.read_parquet(out_path, columns=["security_id", "date", "close", "adv21"]
-                         + cols + [f"fwd{h}" for h in HORIZONS])
-    n0 = len(df)
-    df.sort_values(["security_id", "date"], inplace=True, kind="stable")
-    red = reductions(df, grid)
-    df = pd.concat([df[["security_id", "date", "close", "adv21"]
-                       + [f"fwd{h}" for h in HORIZONS]],
-                    pd.DataFrame(red, index=df.index)], axis=1)
-    apply_lag(df, list(red), lag)
-    df = df[(df.adv21 >= MIN_ADV) & (df.close >= MIN_PRICE)].dropna(subset=list(red))
-    print(f"[load] {n0:,} → {len(df):,} rows  (lag {lag}b, ADV ≥ ${MIN_ADV:,.0f}, "
-          f"px ≥ ${MIN_PRICE:.0f}), {time.time() - t0:.1f}s")
-    print(f"[load] {df.date.min()} → {df.date.max()}, "
-          f"{df.security_id.nunique():,} securities, {df.date.nunique():,} dates\n",
-          flush=True)
-    return df
-
-
-def diag(out_path: str = OUT, grid=GRID) -> None:
-    t0 = time.time()
-    df = load(out_path, grid)
-    NAMES = [c for c in df.columns
-             if c not in ("security_id", "date", "close", "adv21")
-             and not c.startswith("fwd")]
-    S, R = ic_series(df, NAMES, composites=COMPOSITES)
-    ALL = NAMES + list(COMPOSITES)
-
-    print("=" * 84)
-    print(f"1. INFORMATION COEFFICIENT   (cross-sectional Spearman, {LAG}-bar lag, "
-          f"NW at 1.5h)")
-    print("=" * 84)
-    ic_table(S, ALL)
-    base = max(NAMES, key=lambda c: S[(c, 21)].mean())
-    print(f"\n  PAIRED vs the best single reduction ({base}) — NW t of the DIFFERENCE.")
-    paired_table(S, [(c, base) for c in ALL if c != base])
-
-    print("\n" + "=" * 84)
-    print("2. MONOTONICITY   (mean fwd21 log return in bp, by signal quintile)")
-    print("=" * 84)
-    for c in ALL:
-        q = pd.qcut(R[c], 5, labels=False, duplicates="drop")
-        m = df.groupby(q, observed=True).fwd21.mean() * 1e4
-        mono = bool((np.diff(m.to_numpy()) > 0).all())
-        print(f"  {c:16s}" + " ".join(f"Q{i + 1}:{v:7.1f}" for i, v in enumerate(m))
-              + f"   Q5−Q1 = {m.iloc[-1] - m.iloc[0]:6.1f} bp  monotone={mono}")
-
-    print("\n" + "=" * 84)
-    print("3. TURNOVER   (mean |Δsignal| per name-day, normalised by σ(signal))")
-    print("=" * 84)
-    d2 = df.sort_values(["security_id", "date"])
-    for c in NAMES:
-        s = d2.groupby("security_id", observed=True)[c].diff().abs().mean()
-        print(f"  {c:16s}{s / d2[c].std():8.4f}")
-    print("  Cost is proportional to this; nothing here is net of spreads.")
-
-    print("\n" + "=" * 84)
-    print("4. BREADTH   (N_eff = tr(Σ)²/tr(Σ²) on the daily IC series)")
-    print("=" * 84)
-    legs = next(iter(COMPOSITES.values()))
-    P = pd.DataFrame({c: S[(c, 1)] for c in legs}).dropna()
-    C = np.cov(P.to_numpy().T)
-    print("  " + pd.DataFrame(np.corrcoef(P.to_numpy().T), index=P.columns,
-                              columns=P.columns)
-          .to_string(float_format=lambda x: f"{x:+.3f}").replace("\n", "\n  "))
-    print(f"\n  N_eff = {np.trace(C) ** 2 / np.trace(C @ C):.2f}   (max {len(legs)}.00)")
-    print("  Only meaningful because each leg carries alpha on its own. N_eff alone is")
-    print("  gameable — orthogonal noise raises it without limit.")
-
-    print("\n" + "=" * 84)
-    print("5. STABILITY   (IC by sub-period — a full-sample mean can hide a dead decade)")
-    print("=" * 84)
-    eras = [("2000-2008", 2000, 2008), ("2009-2016", 2009, 2016), ("2017-2026", 2017, 2026)]
-    print(f"  {'signal':16s}" + "".join(f"{e + ' h1/h21':>24s}" for e, _, _ in eras))
-    for c in ALL:
-        row = ""
-        for _, lo, hi in eras:
-            for h in (1, 21):
-                s = S[(c, h)]
-                m = ((s.index >= pd.Timestamp(f"{lo}-01-01"))
-                     & (s.index <= pd.Timestamp(f"{hi}-12-31")))
-                row += f"{s[m].mean():12.4f}"
-        print(f"  {c:16s}{row}")
-
-    print(f"\n[diag] done in {time.time() - t0:.1f}s")
-
-
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if not a.startswith("-")] or ["build", "diag"]
-    if "build" in args:
-        build()
-    if "diag" in args:
-        diag()
+    build()

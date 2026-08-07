@@ -62,6 +62,34 @@ window *ending at t*, and `skipped[t] == raw[t−k]`, so the 12−1 construction
 That is the load-bearing design choice. Every error found in the review was a reduction
 baked into the build where it could not be questioned.
 
+### 2.1 Bar integrity — the build rejects prices before it fits anything
+
+Added after `LOSS.md` §9.7 found that the panel these results are computed on is corrupt.
+Two vendor defects, and neither is visible to the existing `phase1_checks` gate:
+
+| defect | example | treatment |
+|---|---|---|
+| **isolated foreign print** — a whole OHLC bar from another instrument, unwinding on the next bar | 270686, 2015-09-18: 519.17 → 14,199.60 → 519.17, volume 421,071 vs a normal 500 | drop the bars (4,030, across 123 securities) |
+| **level break** — missed corporate action, or a spliced/recycled ticker | 283067, 2004-07-30: 8.99 → 74.30 overnight, `split_factor` 1.0, dollar volume continuous through it. 258690 alternates a $0.005 stub at volume 0 with a real $4,700 name at volume 250k | **cut the series** (785 cuts) |
+
+Three things make this belong in the build and nowhere else:
+
+* a print corrupts **every window that contains it** — up to 252 bars of `tb`/`tc`/`sd`
+  for one security — and both legs of `fwd{h}`. There is no downstream repair.
+* the bar is internally consistent, so `low ≤ {open,close} ≤ high` passes it, and
+  `split_factor` is 1.0, so the corporate-action checks pass it too.
+* **the liquidity screen selects for it.** The spike inflates `adv21` for 21 bars and
+  pulls the name *into* the top-1000-by-ADV universe. Screening harder makes it worse.
+
+Detection is on **adjusted** price and by **reversal**, which is what makes it split-safe:
+a real split is already in `adj` so it never appears, and a missed split does not unwind.
+Level breaks **cut** rather than drop — the data either side is fine, only its continuity
+is not — so no window and no `fwd{h}` spans a break, and the universe is preserved
+(4,505 securities reach the screened panel, against 4,506 before).
+
+**No winsorisation, here or downstream.** Anything that survives the cleaning is treated
+as real return.
+
 **Windows longer than an asset's history are skipped** rather than voiding the row.
 Consequence: any reduction that averages across rungs averages a *varying* number of them,
 and since |t| ∝ L^1.5 its scale tracks listing age — mean |trend| runs 4.12 (2 rungs) →
@@ -70,6 +98,12 @@ a single-rung reduction, which simply has no value until the rung fits (~5% of s
 rows).
 
 ## 3. Findings
+
+> **Stale as of §2.1.** Every number below was measured before bar integrity existed, on
+> a panel where 123 securities carried a ×27 print inside every window that contained
+> one. The ICs are cross-sectional rank statistics and so are largely insulated; `sd_L`
+> (§3.6) is not a rank statistic and is the most exposed. Rerun `diag` before building
+> on any of it — this is item 0 in `LOSS.md` §10.
 
 Sample: 19,003,721 → **15,895,611** rows after a 1-bar lag and the screen (ADV21 ≥ $1M,
 close ≥ $5), 6,622 dates, 5,566 securities, 2001–2026.

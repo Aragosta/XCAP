@@ -1,72 +1,33 @@
 """
-trendscan.py — a rolling OLS trend scan. Emits a SURFACE, not a signal.
+trendscan.py — a rolling OLS trend scan. The signal, and nothing else.
 
-WHAT THIS IS
-------------
-At every (asset, date) it fits log price on time over a ladder of trailing window
-lengths, and keeps the whole term structure. Three quantities per rung, from one set of
-rolling sums:
+At every (asset, date) it fits log adjusted price on time over a ladder of trailing
+window lengths and emits ONE number per rung:
 
-    tb_L   slope t          direction, in units of the fit's own noise
-    tc_L   curvature t      the exact orthogonal complement of the slope
-    sd_L   residual sd      the noise scale itself
+    tb_L   slope t-stat
 
-Everything uses data ≤ t. López de Prado's trend scanning is a forward-looking
-*labelling* method; this is the same machinery run backward so it can be traded.
+That is the whole surface. No second path, no scale column, no target, no reduction, no
+scoring. Everything you might do WITH a t — absolute magnitude, cross-rung rescaling,
+ranking, skip, liquidity screening, forward horizons, deciles, costs — happens after the
+fact and is not in this tree right now. It was cut deliberately (see TRENDSCAN.md's
+status note); recover it from git history rather than rewriting it from memory:
 
-`sd` is the denominator of both t-stats, and it is also a signal in its own right — the
-low-vol effect, arriving free from sums already computed (IC_h1 0.0134, t 4.29, at a
-turnover of 0.0145). It is NOT a trend-scan object and should not be described as one.
+    git show 9810fa7:research/trendscan_eval.py
 
-A fourth quantity, `rz` — the endpoint residual, "overextension" — was emitted and has
-been REMOVED. It measured 0.851 correlated with curvature, because it was taken from the
-LINEAR fit while the surface also fits a quadratic: the endpoint is exactly where the
-quadratic term is largest, so `rz_L ≈ c·L²/6/sd` and the linear fit dumps the whole
-curvature signal into its last residual. Adding it to a composite already holding
-curvature was significantly harmful (ΔIC −0.0020, t −4.05 at h1) at up to 4× the
-turnover. Taking it from the QUADRATIC fit instead would make it orthogonal to both by
-construction; that is the only version worth re-introducing. See TRENDSCAN.md §3.7.
+Everything uses data ≤ t: López de Prado's trend scanning is a forward-looking
+*labelling* method, this is the same machinery run backward.
 
-WHAT THIS FILE DOES NOT DECIDE
-------------------------------
-No skip. No argmax. No fast/slow split. No composite. Those are REDUCTIONS of the
-surface, they are one array read each, and they belong to whatever consumes this —
-a signal, a feature block, a label. Baking any of them into the build costs a
-dimension the scan already spans, and every measured mistake in this project's
-history has been exactly that:
+What the build still does, and why it is not "extra": it rejects bars before it fits
+anything (§2.1). A spurious print corrupts every window containing it and there is no
+downstream place to repair it.
 
-  * the 12-rung ladder MEAN was the stored trend leg; a single 252 rung beats it at
-    every horizon (paired t 2.60 at h1) at 60% of the turnover. The surface was
-    right and the reduction was wrong.
-  * `slow`(argmax) vs `fast`(ladder) were stored as two separate legs with two
-    different mechanisms. Held to one grid and one skip, the argmax LOSES for slow —
-    the reverse of what was claimed — and for fast the two are indistinguishable.
-  * a fast/slow split at all: dropping the fast leg from the composite is free at h1/h5
-    and better at h21/h63, while it carried 23× the trend leg's turnover.
+The surface is not persisted: the scan is ~6s and a stale multi-GB parquet outlives the
+harness that validated it.
 
-Only the trend leg is measurably load-bearing (dropping it costs ΔIC −0.0064, t −6.04
-at h1). TRENDSCAN.md records all of it; every number came from reducing this stored
-surface, with no rescan — which is the argument for storing it.
+Findings live in TRENDSCAN.md. Nothing here scores anything.
 
-THE GRID
---------
-One ladder, spanning short to long. There is no "fast ladder": a 5-day rung is just a
-rung. Roughly geometric, because adjacent rungs are near-redundant — 117 daily-spaced
-windows measured N_eff 2.14, so fine spacing buys columns, not information.
-
-Windows longer than an asset's history are skipped rather than voiding the row, so a
-252 rung does not require 252 bars of history. NOTE the consequence: any reduction that
-averages across rungs then averages over a VARYING number of them, and since |t| ∝ L^1.5
-its scale tracks listing age. Reduce with a single rung, or mask on rung count.
-
-SPEED
------
-The naive scan is O(T · ΣL). Each window is a rolling OLS updated in O(1) per bar via
-centred sums, so the surface costs O(T · |GRID|), njit-compiled and parallel over
-assets, with an exact recompute every RESYNC bars to stop drift. 19M rows × 10 rungs
-scan in ~3s; the whole build including the parquet write is ~40s.
-
-    python research/trendscan.py build     # surface → data/_staging/trendscan.parquet
+    python research/trendscan.py check    # kernel + lstsq agreement + null scale
+    python research/trendscan.py build    # scan, print, discard (add a path to write)
 """
 from __future__ import annotations
 
@@ -78,143 +39,98 @@ import pandas as pd
 from numba import njit, prange
 
 PANEL = "data/_staging/alpha_panel.parquet"
-OUT = "data/_staging/trendscan.parquet"
 
-# One ladder, short to long, roughly geometric. A rung is a rung; there is no fast/slow
-# distinction here because the data does not support hardcoding one.
+# Roughly geometric. Adjacent rungs are near-redundant (117 daily-spaced windows measured
+# N_eff 2.14), so finer spacing buys columns, not information. TRENDSCAN.md §3.2.
 GRID = np.array([5, 10, 21, 42, 63, 84, 126, 168, 210, 252], dtype=np.int64)
-EMIT = ("tb", "tc", "sd")
 
-HORIZONS = (1, 5, 21, 63)   # forward-return horizons written to the parquet
+# Winsorising the returns fed to the filter is a real thing and it measured as the signal
+# (§3.5, §3.13). We are not doing it here: this file emits the raw fit, nothing else.
+
 RESYNC = 2048                                       # exact-recompute cadence, anti-drift
 
-# Bar integrity. The vendor EOD contains isolated bars belonging to a DIFFERENT
-# instrument — a whole OHLC row at ~27× the surrounding level, with its own volume, that
-# unwinds exactly on the next bar (security 270686, 2015-09-18: 519.17 → 14199.60 →
-# 519.17). The bar is internally consistent, so low ≤ {open,close} ≤ high passes it, and
-# the ADV screen actively *selects* for it: the spike inflates adv21 for 21 bars and
-# pulls the name into the liquid universe. 3,388 such bars across 299 of 5,604
-# securities; in the loss panel 665 rows of 6.66M carried 78% of Σy².
-#
-# Detected on ADJUSTED price and by REVERSAL, which is what makes it split-safe: a real
-# split is already in `adj` so it never shows here, and a *missed* split does not unwind.
-# Flagged bars are dropped, not interpolated — the price on those bars is unknown. Since
-# the move reverts, dropping leaves the level series continuous.
+# Bar integrity — the vendor ships isolated bars belonging to a DIFFERENT instrument, and
+# the ADV screen actively selects for them. Detected on ADJUSTED price and by REVERSAL,
+# which is what makes it split-safe. Worked examples and counts: TRENDSCAN.md §2.1.
 BAD_SPIKE = 0.80       # |log return| a single bar must not exceed unexplained (≈ ×2.2)
 BAD_REVERT = 0.15      # ...and that unwinds to within this fraction of itself
 BAD_WINDOW = 3         # ...within this many bars (a spike can plateau before reverting)
-# The second defect is a LEVEL BREAK, and it is not repairable bar by bar either. Two
-# causes, one treatment:
-#
-#   missed corporate action — security 283067, 2004-07-30: 8.99 → 74.30 overnight
-#     (×8.26) with split_factor 1.0 and adv21 running 70M → 95M → 101M straight through.
-#     Dollar volume is continuous across it, which is the signature of a reverse split
-#     the adjustment factors never saw; a genuine +726% session spikes volume, not
-#     share count down.
-#   spliced / recycled ticker — security 258690 alternates a dead $0.005 stub
-#     (volume 0) with a real $4,700 name (volume 250k) on consecutive bars, and
-#     security 258234 resumes 2 years later at 4× the price. `phase1_checks` already
-#     names this: "the price series and the action series describe different companies
-#     that shared a symbol".
-#
-# Either way the price base changes, so bars before and after are not one series and no
-# window may span the break. They are CUT into separate series rather than dropped: the
-# data on both sides is fine, only its continuity is not. Dropping the securities whole
-# cost 3.89% of the panel for nothing.
+# A LEVEL BREAK (missed corporate action, or a recycled ticker) is not repairable bar by
+# bar: the price base changes, so no window may span it. Cut, not dropped — the data on
+# both sides is fine, only its continuity is not.
 BAD_BREAK = 1.60       # |log return| that ends a series (≈ ×5 / −80%)
 BAD_GAP = 365          # ...as does a calendar gap of this many days (suspension, relist)
 MIN_SEG = 5            # segments shorter than the shortest rung carry no surface at all
 
 
 # ── kernels ─────────────────────────────────────────────────────────────────
-@njit(cache=True, fastmath=True, inline="always")
-def _moments(Lf):
-    """Centred design moments for x = 0…L−1 with u = x − (L−1)/2.
-    Σu = Σu³ = 0, so the linear and quadratic basis vectors are orthogonal: the slope is
-    IDENTICAL in both fits and the curvature is its exact orthogonal complement."""
-    Su2 = Lf * (Lf * Lf - 1.0) / 12.0
-    Su4 = Lf * (Lf * Lf - 1.0) * (3.0 * Lf * Lf - 7.0) / 240.0
-    return Su2, Su4 - Su2 * Su2 / Lf
-
-
 @njit(cache=True, fastmath=True)
-def _ladder_one(y, ladder, tout, cout, sout):
-    """All three quantities at each rung — levels, nothing collapsed.
+def _ladder_one(y, ladder, tout, sout):
+    """Slope t at each rung — levels, nothing collapsed.
 
-    Slope and curvature come out of the SAME rolling sums, so `tc` alongside `tb` costs
-    three extra flops and no extra pass. That is why emitting the full surface is not a
-    luxury: reducing it later is strictly cheaper than scanning twice."""
+    The design is centred on u = x − (L−1)/2, so Σu = 0 and Su2 = L(L²−1)/12 is a closed
+    form, not a sum. Three rolling sums (Σy, Σy², Σi·y) carry the whole fit.
+
+    `sout` is the residual sd. It is the t's denominator and is written out for the
+    selfcheck only — it is a scale reading, not a trend-scan object, and `build` throws
+    it away. Low-vol as an anomaly is §3.6's business, not this file's.
+
+    Curvature (`tc`, the exact orthogonal complement of the slope) used to come out of a
+    fourth sum Σi²·y here. It measured zero on returns on all ten rungs, so it and its
+    rank-2 recursion are gone; TRENDSCAN.md §3.7 keeps the algebra."""
     n = y.shape[0]
     for k in range(ladder.shape[0]):
         L = ladder[k]
         for t in range(n):
             tout[t, k] = np.nan
-            cout[t, k] = np.nan
             sout[t, k] = np.nan
         if n < L or L < 5:
             continue
         Lf = float(L)
         m = (Lf - 1.0) / 2.0
-        Su2, Su4_c = _moments(Lf)
+        Su2 = Lf * (Lf * Lf - 1.0) / 12.0
         Sy = 0.0
         Syy = 0.0
         W1 = 0.0
-        W2 = 0.0
         for i in range(L):
             v = y[i]
             Sy += v
             Syy += v * v
             W1 += i * v
-            W2 += i * i * v
         for t in range(L - 1, n):
             if t > L - 1:
                 if (t - (L - 1)) % RESYNC == 0:
                     Sy = 0.0
                     Syy = 0.0
                     W1 = 0.0
-                    W2 = 0.0
                     for i in range(L):
                         v = y[t - L + 1 + i]
                         Sy += v
                         Syy += v * v
                         W1 += i * v
-                        W2 += i * i * v
                 else:
                     yo = y[t - L]
                     yn = y[t]
-                    W2 = W2 - 2.0 * W1 + Sy - yo + (Lf - 1.0) * (Lf - 1.0) * yn
                     W1 = W1 - Sy + yo + (Lf - 1.0) * yn
                     Sy = Sy - yo + yn
                     Syy = Syy - yo * yo + yn * yn
             Suy = W1 - m * Sy
-            Su2y_c = (W2 - 2.0 * m * W1 + m * m * Sy) - Su2 * Sy / Lf
             b = Suy / Su2
             sse1 = (Syy - Sy * Sy / Lf) - b * Suy
             sd = np.sqrt(sse1 / (Lf - 2.0)) if sse1 > 0.0 else 0.0
             sout[t, k] = sd
-            tout[t, k] = 0.0 if sd <= 0.0 else b * np.sqrt(Su2) / sd
-            c = Su2y_c / Su4_c
-            sse2 = sse1 - c * Su2y_c
-            cout[t, k] = 0.0 if sse2 <= 0.0 else c / np.sqrt(sse2 / ((Lf - 3.0) * Su4_c))
+            # A degenerate denominator emits NaN, not 0.0: a flat window is an ABSENT
+            # reading, and 0.0 lands it at mid-rank instead. 0.08% of screened rows have
+            # sd_252 < 1e-4 and the bottom-1%-sd rows carry mean |tb_252| 33.7 vs 17.9.
+            tout[t, k] = np.nan if sd <= 0.0 else b * np.sqrt(Su2) / sd
 
 
 @njit(cache=True, parallel=True)
-def _ladder_panel(y, starts, ends, ladder, tout, cout, sout):
+def _ladder_panel(y, starts, ends, ladder, tout, sout):
     for a in prange(starts.shape[0]):
         s, e = starts[a], ends[a]
         if e - s >= 2:
-            _ladder_one(y[s:e], ladder, tout[s:e], cout[s:e], sout[s:e])
-
-
-@njit(cache=True, parallel=True)
-def _fwd_returns(y, starts, ends, horizons, out):
-    for a in prange(starts.shape[0]):
-        s, e = starts[a], ends[a]
-        n = e - s
-        for h in range(horizons.shape[0]):
-            H = horizons[h]
-            for t in range(n):
-                out[s + t, h] = y[s + t + H] - y[s + t] if t + H < n else np.nan
+            _ladder_one(y[s:e], ladder, tout[s:e], sout[s:e])
 
 
 @njit(cache=True, parallel=True)
@@ -242,20 +158,10 @@ def _bad_bars(y, starts, ends, spike, revert, window, out):
                     break
 
 
-@njit(cache=True, parallel=True)
-def _roll_mean(x, starts, ends, win, out):
-    for a in prange(starts.shape[0]):
-        s, e = starts[a], ends[a]
-        acc = 0.0
-        for t in range(s, e):
-            acc += x[t]
-            if t - s >= win:
-                acc -= x[t - win]
-            out[t] = acc / min(t - s + 1, win)
-
-
 # ── build ───────────────────────────────────────────────────────────────────
-def build(panel: str = PANEL, out_path: str = OUT, grid=GRID, emit=EMIT) -> pd.DataFrame:
+def build(panel: str = PANEL, out_path: str | None = None, grid=GRID) -> pd.DataFrame:
+    """Scan the panel and return the surface. `out_path` writes a parquet if you really
+    want one; nothing in this file does, because recomputing is cheaper than storing."""
     import duckdb
 
     t0 = time.time()
@@ -268,9 +174,9 @@ def build(panel: str = PANEL, out_path: str = OUT, grid=GRID, emit=EMIT) -> pd.D
     b = np.flatnonzero(np.r_[True, sid[1:] != sid[:-1], True])
     starts, ends = b[:-1].copy(), b[1:].copy()
 
-    # Bar integrity, BEFORE anything is fitted or any target is measured. A spurious
-    # print corrupts every window that contains it (up to 252 bars of tb/tc/sd) and both
-    # legs of fwd{h}; there is no downstream place to repair it. See BAD_SPIKE.
+    # Bar integrity, BEFORE anything is fitted. A spurious print corrupts every window
+    # that contains it (up to 252 bars of tb); there is no downstream place to repair
+    # it. See BAD_SPIKE.
     t2 = time.time()
     ly = np.log(df.adj.to_numpy(np.float64))
     bad = np.zeros(len(df), dtype=np.bool_)
@@ -287,9 +193,8 @@ def build(panel: str = PANEL, out_path: str = OUT, grid=GRID, emit=EMIT) -> pd.D
         ly = np.log(df.adj.to_numpy(np.float64))
 
     # Whatever survives the bar rule and is still impossible is a level break. Cut the
-    # series there, so no rolling window and no fwd{h} ever spans it. Downstream code
-    # is unchanged: it already works on contiguous per-security blocks, and a cut is
-    # simply one more block boundary.
+    # series there, so no rolling window ever spans it. Downstream code is unchanged: it
+    # already works on contiguous blocks, and a cut is simply one more block boundary.
     r = np.diff(ly, prepend=ly[0])
     gap = np.diff(df.date.to_numpy("datetime64[D]").astype(np.int64), prepend=0)
     price_cut, gap_cut = np.abs(r) > BAD_BREAK, gap > BAD_GAP
@@ -314,46 +219,112 @@ def build(panel: str = PANEL, out_path: str = OUT, grid=GRID, emit=EMIT) -> pd.D
         b = np.flatnonzero(np.r_[True, seg[1:] != seg[:-1], True])
         starts, ends = b[:-1].copy(), b[1:].copy()
 
-    # Log adjusted price, centred per asset. Slope and t are invariant to a level shift;
-    # centring only keeps the rolling sums well conditioned.
+    # Log adjusted price, centred per segment. Slope and t are invariant to a level
+    # shift; centring only keeps the rolling sums well conditioned.
     y = np.log(df.adj.to_numpy(np.float64))
     for s, e in zip(starts, ends):
         y[s:e] -= y[s:e].mean()
 
     t1 = time.time()
-    tb = np.empty((len(df), len(grid)), dtype=np.float64)
-    tc, sd = np.empty_like(tb), np.empty_like(tb)
-    _ladder_panel(y, starts, ends, np.asarray(grid, dtype=np.int64), tb, tc, sd)
-    print(f"[build] surface: {len(grid)} rungs × 3 in {time.time() - t1:.1f}s", flush=True)
+    gl = np.asarray(grid, dtype=np.int64)
+    shape = (len(df), len(grid))
+    # float32 — this is the stored precision anyway, and a 19M×10 surface in float64 is
+    # 1.5 GB of nothing.
+    tb = np.full(shape, np.nan, dtype=np.float32)
+    scratch = np.full(shape, np.nan, dtype=np.float32)   # residual sd: written, discarded
+    _ladder_panel(y, starts, ends, gl, tb, scratch)
+    del scratch
+    print(f"[build] surface: {len(grid)} rungs in {time.time() - t1:.1f}s", flush=True)
 
-    fwd = np.empty((len(df), len(HORIZONS)), dtype=np.float64)
-    _fwd_returns(y, starts, ends, np.asarray(HORIZONS, dtype=np.int64), fwd)
-    dv = df.close.to_numpy(np.float64) * df.volume.to_numpy(np.float64)
-    adv = np.empty(len(df), dtype=np.float64)
-    _roll_mean(dv, starts, ends, 21, adv)
-
+    # `seg`, not `security_id`, is the unit of contiguity: a level break CUTS a security
+    # into two series, and any shift or diff that spans the cut is reading across a
+    # discontinuity the build exists to remove. Everything downstream groups on this.
+    segid = np.empty(len(df), dtype=np.int32)
+    for i, (s, e) in enumerate(zip(starts, ends)):
+        segid[s:e] = i
     o = pd.DataFrame({
         "security_id": df.security_id.to_numpy(),
+        "seg": segid,
         "date": df.date.to_numpy(),
         "close": df.close.to_numpy(np.float32),
-        "adv21": adv.astype(np.float32),
-    })
+        "volume": df.volume.to_numpy(np.float64),
+        "y": y.astype(np.float32),          # centred log adj price. Targets, liquidity
+    })                                      # and every flat baseline derive from these.
     # RAW. No skip baked in — the window length and any end-lag are two axes of one
     # 2-D surface; hardcoding the second collapses it.
-    for name, A in zip(("tb", "tc", "sd"), (tb, tc, sd)):
-        if name in emit:
-            for j, L in enumerate(grid):
-                o[f"{name}_{L}"] = A[:, j].astype(np.float32)
-    # Targets, for downstream diagnostics. Measured FROM t; any implementation lag is
-    # applied to the SIGNAL by the consumer, so these stay convention-free.
-    for i, h in enumerate(HORIZONS):
-        o[f"fwd{h}"] = fwd[:, i].astype(np.float32)
+    for j, L in enumerate(grid):
+        o[f"tb_{L}"] = tb[:, j]
 
-    o.to_parquet(out_path, index=False)
-    print(f"[build] wrote {out_path}: {len(o):,} rows × {len(o.columns)} cols "
-          f"({len(grid)} rungs × {len(emit)}), {time.time() - t0:.1f}s")
+    if out_path:
+        o.to_parquet(out_path, index=False)
+        print(f"[build] wrote {out_path}", flush=True)
+    print(f"[build] {len(o):,} rows × {len(o.columns)} cols ({len(grid)} rungs), "
+          f"{time.time() - t0:.1f}s", flush=True)
     return o
 
 
+def selfcheck() -> None:
+    """The kernel is the only non-trivial branch left in this file."""
+    rng = np.random.default_rng(0)
+
+    # A degenerate window emits NaN, not 0.0.
+    y = np.zeros(300)
+    g = np.array([252], dtype=np.int64)
+    t_, s_ = (np.full((300, 1), 7.0) for _ in range(2))
+    _ladder_one(y, g, t_, s_)
+    assert np.isnan(t_[299, 0]), "flat window did not emit NaN"
+    assert np.isnan(t_[0, 0]), "pre-window rows not NaN-filled"
+
+    # The rolling sums must reproduce a plain least-squares fit. This is what the removed
+    # quadratic-orthogonality assertions were implicitly checking; with the quadratic term
+    # gone, this is the only thing between the recursion and a silent wrong slope.
+    for L in (5, 21, 252):
+        u = np.arange(L) - (L - 1) / 2.0
+        yv = rng.normal(0, 1, L).cumsum()
+        t_, s_ = (np.empty((L, 1)) for _ in range(2))
+        _ladder_one(yv, np.array([L], dtype=np.int64), t_, s_)
+        X = np.column_stack([np.ones(L), u])
+        resid = yv - X @ np.linalg.lstsq(X, yv, rcond=None)[0]
+        sd_ref = np.sqrt(resid @ resid / (L - 2))
+        b_ref = np.linalg.lstsq(X, yv, rcond=None)[0][1]
+        t_ref = b_ref * np.sqrt(L * (L * L - 1) / 12.0) / sd_ref
+        assert abs(s_[L - 1, 0] - sd_ref) < 1e-9 * max(sd_ref, 1.0), f"sd wrong at L={L}"
+        assert abs(t_[L - 1, 0] - t_ref) < 1e-7 * max(abs(t_ref), 1.0), f"tb wrong at L={L}"
+
+    # The O(1) update must not drift. Check well past a RESYNC boundary, not just the
+    # first window — the recursion is the whole reason this file is fast.
+    L, n = 21, RESYNC + 500
+    yv = rng.normal(0, 0.01, n).cumsum()
+    t_, s_ = (np.empty((n, 1)) for _ in range(2))
+    _ladder_one(yv, np.array([L], dtype=np.int64), t_, s_)
+    X = np.column_stack([np.ones(L), np.arange(L) - (L - 1) / 2.0])
+    for t in (L - 1, RESYNC, RESYNC + 1, n - 1):
+        w = yv[t - L + 1:t + 1]
+        rr = w - X @ np.linalg.lstsq(X, w, rcond=None)[0]
+        assert abs(s_[t, 0] - np.sqrt(rr @ rr / (L - 2))) < 1e-9, f"sums drifted at t={t}"
+
+    # Null sd of tb_L under a driftless random walk is κ·√L, not 1 — the t divides by an
+    # se assuming information accrues at L^1.5, under a unit root it accrues at √L. The
+    # measured κ (§3.9) is not applied anywhere in this file, because rescaling is a
+    # reduction; this asserts the kernel still produces the null it was measured on.
+    L = 63
+    yv = rng.normal(0, 0.02, (2000, L)).cumsum(1)
+    tt = np.empty(2000)
+    for i in range(2000):
+        t_, s_ = (np.empty((L, 1)) for _ in range(2))
+        _ladder_one(yv[i], np.array([L], dtype=np.int64), t_, s_)
+        tt[i] = t_[L - 1, 0]
+    k = tt.std() / np.sqrt(L)
+    assert 1.26 < k < 1.54, f"null of tb_{L} is {k:.3f}·sqrt(L), not ~1.40·sqrt(L)"
+
+    print("selfcheck ok")
+
+
 if __name__ == "__main__":
-    build()
+    cmd = sys.argv[1:2] or ["check"]
+    if cmd == ["check"]:
+        selfcheck()
+    elif cmd == ["build"]:
+        build(out_path=sys.argv[2] if len(sys.argv) > 2 else None)
+    else:
+        sys.exit(f"unknown command {cmd[0]!r}; try: check | build")

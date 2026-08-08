@@ -1,5 +1,14 @@
 # The loss — XCAP v0
 
+> **Provenance, 2026-08-07: `research/loss_test.py` does not exist and is not in git
+> history.** Every number below is therefore *testimony* — unreproducible, unverifiable,
+> and not re-measured on the post-bar-integrity panel. Read §3's CPCV and deflated-Sharpe
+> figures as claims, not results. Kept because §1's method table and §4's kill-list are
+> the most valuable prose in the project; both are arguments, not measurements, and both
+> survive the loss of the code. Anything here that a decision rests on must be re-measured
+> — and as of 2026-08-08 there is no harness in the tree to re-measure it with; see
+> TRENDSCAN.md's status note for where the last one went.
+
 The single record for `research/loss_test.py`. Companion to `TRENDSCAN.md` (what the
 features are); this records what is done with them, and what has been killed. **Replaces
 its previous 673-line version**, which argued for a differentiable economic loss, a horizon

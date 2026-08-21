@@ -1,0 +1,6 @@
+36 runs on 4 workers (1000 steps, N=128, d=128)
+[done  241.4s] needle               smaxroute-softmax      seed=1 acc=0.047 loss=2.775
+[done  267.3s] needle               mosa-sparsemax         seed=0 acc=0.205 loss=2.585
+[done  392.3s] needle               baseline-softmax       seed=0 acc=0.705 loss=0.804
+[done  167.1s] needle               smaxroute-sparsemax    seed=0 acc=0.047 loss=2.773
+[done  200.9s] needle               mosa-sparsemax         seed=1 acc=0.238 loss=2.436

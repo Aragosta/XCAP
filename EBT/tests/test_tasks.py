@@ -46,24 +46,41 @@ def test_label_is_not_trivially_predictable(name):
 
 
 def test_associative_recall_label_is_the_value_bound_to_the_query_key():
-    task = AssociativeRecall(seq_len=32)
-    x, y, m = task.batch(64, gen())
+    task = AssociativeRecall(seq_len=64)
+    x, y, _ = task.batch(64, gen())
     for b in range(64):
-        query_key = int(x[b, -1])
-        keys = x[b, 0 : 2 * task.n_pairs : 2].tolist()
-        vals = x[b, 1 : 2 * task.n_pairs : 2].tolist()
-        assert x[b, -2] == task.query_tok
-        assert keys.count(query_key) == 1, "keys must be distinct"
-        assert vals[keys.index(query_key)] - task.val0 == int(y[b, -1])
+        body = x[b, :-2]
+        pairs = {int(v): int(body[i + 1]) - task.val0
+                 for i, v in enumerate(body) if task.key0 <= int(v) < task.val0}
+        assert len(pairs) == task.n_pairs, "keys must be distinct and all present"
+        assert int(x[b, -2]) == task.query_tok
+        assert pairs[int(x[b, -1])] == int(y[b, -1])
+
+
+def test_associative_recall_values_are_in_range_and_keys_are_content_addressed():
+    task = AssociativeRecall(seq_len=64)
+    x, y, _ = task.batch(128, gen())
+    key_positions = ((x[:, :-2] >= task.key0) & (x[:, :-2] < task.val0))
+    assert (key_positions.sum(1) == task.n_pairs).all()
+    # the queried key sits at a different position every time -> no positional shortcut
+    first_key_pos = key_positions.float().argmax(1)
+    assert len(set(first_key_pos.tolist())) > 8
 
 
 def test_associative_recall_answer_depends_on_the_query():
-    """Changing the query changes the answer: the task really needs retrieval."""
-    task = AssociativeRecall(seq_len=32)
+    """Changing which key is queried changes the answer."""
+    task = AssociativeRecall(seq_len=64)
     x, y, _ = task.batch(256, gen())
-    keys = x[:, 0 : 2 * task.n_pairs : 2]
     assert len(set(y[:, -1].tolist())) > 1
-    assert not torch.equal(x[:, -1], keys[:, 0])   # not always the first key
+    queried = x[:, -1]
+    assert len(set(queried.tolist())) > task.n_pairs   # query ranges over the key pool
+
+
+def test_associative_recall_signal_is_sparse():
+    task = AssociativeRecall(seq_len=64)
+    x, _, _ = task.batch(32, gen())
+    informative = (x >= task.key0).float().sum(1).mean() / task.seq_len
+    assert float(informative) < 0.2
 
 
 def test_needle_places_tagged_pairs_and_answers_the_queried_tag():

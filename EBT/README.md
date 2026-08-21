@@ -51,7 +51,7 @@ Three probes chosen so the grid cannot be won by one inductive bias:
 
 | task | what it needs | who should win |
 |---|---|---|
-| `associative_recall` | `[k1 v1 k2 v2 ... QUERY kq]` → the value bound to `kq` | pure retrieval; a delta-shaped attention row is optimal → favours sparsity |
+| `associative_recall` | key-value pairs hidden among noise, query names a key → its value | content-addressed retrieval; a delta-shaped attention row is optimal → favours sparsity |
 | `needle` | noise everywhere, a few TAG-value pairs, a query naming one tag | ~90% of tokens are irrelevant → favours routing to a small subset |
 | `majority` | the most frequent symbol in the whole sequence | every token counts → favours dense, high-entropy attention; the honest counter-example |
 

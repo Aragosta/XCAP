@@ -41,28 +41,40 @@ def _randint(high: int, shape, g: torch.Generator) -> Tensor:
 
 
 class AssociativeRecall(Task):
-    """[k1 v1 k2 v2 ... QUERY kq] -> value bound to kq, predicted at the last position."""
+    """Key-value pairs hidden among noise; the query names one key.
 
-    def __init__(self, seq_len: int = 128, n_keys: int | None = None, n_values: int = 16):
-        n_pairs = (seq_len - 2) // 2
-        # the key pool must be strictly larger than the number of pairs, otherwise
-        # "which keys appear" carries no information and the task degenerates
-        n_keys = max(32, 2 * n_pairs) if n_keys is None else n_keys
-        if n_pairs < 2 or n_keys < n_pairs:
-            raise ValueError("need at least 2 pairs and n_keys >= n_pairs")
-        self.n_pairs, self.n_keys, self.n_values = n_pairs, n_keys, n_values
-        self.key0, self.val0 = 1, 1 + n_keys
-        self.query_tok = 1 + n_keys + n_values
-        super().__init__("associative_recall", 2 * n_pairs + 2, self.query_tok + 1, n_values)
+    Layout: `[... noise ... k_j v_j ... noise ..., QUERY, k_i]`.  Keys are drawn
+    without replacement from a pool larger than the number of pairs, so the match
+    has to be made on content rather than position, and only `2 * n_pairs` of the
+    tokens carry any information at all.
+    """
+
+    def __init__(self, seq_len: int = 64, n_pairs: int = 4, n_noise: int = 32,
+                 n_keys: int = 16, n_values: int = 8):
+        if n_pairs < 2 or seq_len < 4 * n_pairs + 2:
+            raise ValueError("need at least 2 pairs and room for them")
+        if n_keys < n_pairs:
+            raise ValueError("n_keys must be >= n_pairs so keys stay distinct")
+        self.n_pairs, self.n_noise = n_pairs, n_noise
+        self.n_keys, self.n_values = n_keys, n_values
+        self.noise0 = 1
+        self.key0 = 1 + n_noise
+        self.val0 = self.key0 + n_keys
+        self.query_tok = self.val0 + n_values
+        super().__init__("associative_recall", seq_len, self.query_tok + 1, n_values)
 
     def batch(self, batch_size: int, g: torch.Generator) -> Batch:
-        b, n, p = batch_size, self.seq_len, self.n_pairs
-        keys = torch.argsort(torch.rand(b, self.n_keys, generator=g), dim=1)[:, :p]  # distinct
-        vals = _randint(self.n_values, (b, p), g)
+        b, n, m = batch_size, self.seq_len, self.n_pairs
+        body = n - 2
         x = torch.zeros(b, n, dtype=torch.long)
-        x[:, 0 : 2 * p : 2] = keys + self.key0
-        x[:, 1 : 2 * p : 2] = vals + self.val0
-        which = _randint(p, (b,), g)
+        x[:, :body] = _randint(self.n_noise, (b, body), g) + self.noise0
+        slots = torch.argsort(torch.rand(b, body // 2, generator=g), dim=1)[:, :m] * 2
+        keys = torch.argsort(torch.rand(b, self.n_keys, generator=g), dim=1)[:, :m]
+        vals = _randint(self.n_values, (b, m), g)
+        rows = torch.arange(b)[:, None].expand(-1, m)
+        x[rows, slots] = keys + self.key0
+        x[rows, slots + 1] = vals + self.val0
+        which = _randint(m, (b,), g)
         x[:, -2] = self.query_tok
         x[:, -1] = keys[torch.arange(b), which] + self.key0
         y = torch.zeros(b, n, dtype=torch.long)
@@ -81,7 +93,7 @@ class Needle(Task):
     ignores the rest has a real advantage.
     """
 
-    def __init__(self, seq_len: int = 128, n_noise: int = 32, n_values: int = 16,
+    def __init__(self, seq_len: int = 64, n_noise: int = 32, n_values: int = 8,
                  n_needles: int = 4):
         if seq_len < 4 * n_needles + 2:
             raise ValueError("sequence too short for the requested needles")
@@ -117,7 +129,7 @@ class Needle(Task):
 class Majority(Task):
     """Predict the most frequent symbol in the sequence: needs every token."""
 
-    def __init__(self, seq_len: int = 128, n_symbols: int = 8, margin: int = 2):
+    def __init__(self, seq_len: int = 64, n_symbols: int = 8, margin: int = 2):
         self.n_symbols, self.margin = n_symbols, margin
         super().__init__("majority", seq_len, n_symbols + 1, n_symbols)
 

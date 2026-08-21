@@ -5,7 +5,7 @@ import torch
 
 from ebt.attention import AttentionConfig
 from ebt.metrics import (attention_memory_bytes, benchmark_speed, evaluate,
-                         masked_loss_and_acc, router_grad_coverage)
+                         masked_loss_and_acc)
 from ebt.model import build_model
 from ebt.tasks import build_task
 from ebt.train import TrainConfig, run
@@ -62,7 +62,7 @@ def test_evaluate_is_deterministic_for_a_seed():
     a = evaluate(model, task, 2, 8, seed=3)
     b = evaluate(model, task, 2, 8, seed=3)
     assert a["loss"] == pytest.approx(b["loss"])
-    assert set(a) >= {"loss", "acc", "attn_entropy", "attn_zero_frac", "token_coverage"}
+    assert set(a) >= {"loss", "acc", "attn_entropy", "attn_zero_frac", "attn_support"}
 
 
 def test_evaluate_restores_training_mode():
@@ -73,30 +73,20 @@ def test_evaluate_restores_training_mode():
     assert model.training
 
 
-def test_flops_and_memory_shrink_with_routing():
-    task = build_task("majority", 256)
-    dense = build_model(task, variant("baseline-softmax", d_model=D, n_heads=H))
-    mosa = build_model(task, variant("mosa-softmax", d_model=D, n_heads=H, capacity_ratio=0.25))
-    assert mosa.flops_per_sequence() < dense.flops_per_sequence()
-    assert (attention_memory_bytes(mosa, 256, 8)
-            < attention_memory_bytes(dense, 256, 8) / 10)
+def test_flops_and_memory_grow_quadratically_with_length():
+    short = build_model(build_task("majority", 128), small("baseline-softmax"))
+    long = build_model(build_task("majority", 256), small("baseline-softmax"))
+    assert attention_memory_bytes(long, 256, 8) == 4 * attention_memory_bytes(short, 128, 8)
+    assert long.flops_per_sequence() > 2 * short.flops_per_sequence()
 
 
-def test_router_grad_coverage_reports_the_expected_ordering():
-    task = build_task("needle", SEQ)
-    cov = {}
-    for name in ("mosa-softmax", "smaxroute-softmax"):
-        torch.manual_seed(0)
-        model = build_model(task, small(name))
-        cov[name] = router_grad_coverage(model, task, 8, seed=0)["router_grad_frac"]
-    assert 0.0 < cov["mosa-softmax"] <= 0.30
-    assert cov["smaxroute-softmax"] > 0.0
-
-
-def test_router_grad_coverage_is_empty_for_dense():
-    task = build_task("needle", SEQ)
-    model = build_model(task, small("baseline-softmax"))
-    assert router_grad_coverage(model, task, 4, seed=0) == {}
+def test_the_two_variants_cost_the_same_on_paper():
+    """Any measured speed difference is the normaliser's runtime, not its FLOPs."""
+    task = build_task("majority", 128)
+    a = build_model(task, small("baseline-softmax"))
+    b = build_model(task, small("sparsemax"))
+    assert a.flops_per_sequence() == b.flops_per_sequence()
+    assert attention_memory_bytes(a, 128, 4) == attention_memory_bytes(b, 128, 4)
 
 
 def test_benchmark_speed_returns_positive_timings():
@@ -113,9 +103,9 @@ def test_benchmark_speed_returns_positive_timings():
 def test_run_produces_a_complete_result_record():
     cfg = TrainConfig(steps=20, batch_size=8, eval_every=10, eval_batches=1,
                       eval_batch_size=8, warmup=5, n_layers=1, seed=0)
-    res = run("associative_recall", small("mosa-sparsemax"), cfg, seq_len=SEQ)
+    res = run("associative_recall", small("sparsemax"), cfg, seq_len=SEQ)
     for key in ("task", "variant", "final_acc", "final_loss", "history", "params",
-                "flops_per_seq", "fwd_ms", "grad_norm_mean", "router_grad_frac"):
+                "flops_per_seq", "fwd_ms", "grad_norm_mean", "attn_matrix_bytes"):
         assert key in res
     assert len(res["history"]) == 2
     assert math.isfinite(res["final_loss"])

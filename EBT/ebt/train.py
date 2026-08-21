@@ -10,7 +10,7 @@ import torch
 
 from .attention import AttentionConfig
 from .metrics import (attention_memory_bytes, benchmark_speed, evaluate,
-                      masked_loss_and_acc, router_grad_coverage)
+                      masked_loss_and_acc)
 from .model import build_model
 from .tasks import build_task
 
@@ -75,7 +75,6 @@ def run(task_name: str, attn_cfg: AttentionConfig, train_cfg: TrainConfig,
     train_seconds = time.perf_counter() - t0
 
     final = history[-1]
-    eff_width = final.get("route_support", seq_len)
     speed = benchmark_speed(model, task, train_cfg.batch_size)
     result = {
         "task": task_name,
@@ -91,14 +90,11 @@ def run(task_name: str, attn_cfg: AttentionConfig, train_cfg: TrainConfig,
         "steps_to_acc": steps_to_threshold,
         "history": history,
         "params": model.n_params(),
-        "flops_per_seq": model.flops_per_sequence(eff_width if attn_cfg.routing == "sparsemax" else None),
-        "attn_matrix_bytes": attention_memory_bytes(
-            model, seq_len, train_cfg.batch_size,
-            eff_width if attn_cfg.routing == "sparsemax" else None),
+        "flops_per_seq": model.flops_per_sequence(),
+        "attn_matrix_bytes": attention_memory_bytes(model, seq_len, train_cfg.batch_size),
         "train_seconds": train_seconds,
         "grad_norm_mean": mean(grad_norms),
         "grad_norm_std": pstdev(grad_norms),
         **speed,
-        **router_grad_coverage(model, task, train_cfg.batch_size, seed=7),
     }
     return result

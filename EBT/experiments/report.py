@@ -17,12 +17,8 @@ from ebt.variants import VARIANT_NAMES
 ROOT = Path(__file__).resolve().parents[1]
 
 BLURB = {
-    "baseline-softmax": "dense attention, softmax (control)",
-    "dense-sparsemax": "dense attention, sparsemax rows",
-    "mosa-softmax": "MoSA top-k routing + softmax (MoSA as published)",
-    "mosa-sparsemax": "MoSA top-k routing + sparsemax (the two-tier proposal)",
-    "smaxroute-softmax": "sparsemax router + softmax (router ablation)",
-    "smaxroute-sparsemax": "sparsemax router + sparsemax (fully differentiable sparse)",
+    "baseline-softmax": "standard attention, softmax rows (control)",
+    "sparsemax": "same attention, rows projected onto the simplex (exact zeros)",
 }
 
 
@@ -53,12 +49,12 @@ def build(results_path: Path, scaling_path: Path, out_path: Path) -> str:
     tasks = [t for t in cfg["tasks"] if any(k[0] == t for k in by)]
     variants = [v for v in VARIANT_NAMES if any(k[1] == v for k in by)]
 
-    md = ["# Sparse attention bake-off: MoSA x sparsemax vs. softmax attention", ""]
+    md = ["# Sparsemax vs. softmax attention", ""]
     md += [f"* {cfg['seeds']} seeds x {cfg['steps']} steps, N={cfg['seq_len']}, "
            f"d_model={cfg['d_model']}, {cfg['n_heads']} heads, {cfg['n_layers']} layers, "
            f"batch {cfg['batch_size']}, lr {cfg['lr']}",
-           f"* routed variants get a capacity ratio of {cfg['capacity_ratio']} "
-           f"(k = {int(cfg['capacity_ratio'] * cfg['seq_len'])} of {cfg['seq_len']} tokens per head)",
+           "* the two variants differ only in the row normaliser; identical parameter "
+           "counts and identical FLOPs",
            "* every number is mean ± population std over seeds", ""]
 
     md += ["## Variants", "", table(
@@ -87,19 +83,17 @@ def build(results_path: Path, scaling_path: Path, out_path: Path) -> str:
         rows.append(row)
     md += [table(rows, ["variant", *tasks]), ""]
 
-    md += ["## Mechanism diagnostics (averaged over tasks and seeds)", "",
-           "`attn_zero_frac`: share of *exactly zero* attention weights inside the block. "
-           "`attn_support`: non-zero weights per query row. `token_coverage`: share of tokens "
-           "picked by at least one head. `route_support`: tokens per head after routing. "
-           "`router_grad_frac`: share of router logits receiving non-zero gradient.", ""]
-    keys = ["attn_zero_frac", "attn_support", "attn_entropy", "token_coverage",
-            "route_support", "route_support_std", "router_grad_frac"]
+    md += ["## Mechanism diagnostics (per task, final eval)", "",
+           "`attn_zero_frac`: share of *exactly zero* attention weights. `attn_support`: "
+           "non-zero weights per query row (out of N). `attn_entropy`: mean row entropy. "
+           "`attn_max`: largest single weight.", ""]
+    keys = ["attn_zero_frac", "attn_support", "attn_support_frac", "attn_entropy", "attn_max"]
     rows = []
-    for v in variants:
-        runs = [r for t in tasks for r in by[(t, v)]]
-        flat = [{**r["final"], **{k: r.get(k) for k in ("router_grad_frac",)}} for r in runs]
-        rows.append([v] + [fmt(*agg(flat, k), 3) for k in keys])
-    md += [table(rows, ["variant", *keys]), ""]
+    for t in tasks:
+        for v in variants:
+            flat = [r["final"] for r in by[(t, v)]]
+            rows.append([t, v] + [fmt(*agg(flat, k), 3) for k in keys])
+    md += [table(rows, ["task", "variant", *keys]), ""]
 
     md += ["## Cost (as trained: N=%d, batch %d, CPU)" % (cfg["seq_len"], cfg["batch_size"]), ""]
     rows = []

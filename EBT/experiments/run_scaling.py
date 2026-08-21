@@ -31,7 +31,6 @@ def main() -> None:
     ap.add_argument("--d-model", type=int, default=128)
     ap.add_argument("--n-heads", type=int, default=4)
     ap.add_argument("--n-layers", type=int, default=2)
-    ap.add_argument("--capacity-ratio", type=float, default=0.25)
     ap.add_argument("--iters", type=int, default=8)
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--out", default=str(ROOT / "results" / "scaling.json"))
@@ -43,20 +42,16 @@ def main() -> None:
         task = build_task("majority", n)
         for name in VARIANT_NAMES:
             torch.manual_seed(0)
-            cfg = variant(name, d_model=a.d_model, n_heads=a.n_heads,
-                          capacity_ratio=a.capacity_ratio)
+            cfg = variant(name, d_model=a.d_model, n_heads=a.n_heads)
             model = build_model(task, cfg, n_layers=a.n_layers)
             with torch.no_grad():
                 model(task.batch(2, torch.Generator().manual_seed(0))[0])
-            width = model.attention_stats().get("route_support", n)
             speed = benchmark_speed(model, task, a.batch_size, iters=a.iters, warmup=2)
             rows.append({
                 "seq_len": n, "variant": name, **speed,
-                "flops_per_seq": model.flops_per_sequence(
-                    width if cfg.routing == "sparsemax" else None),
-                "attn_bytes": attention_memory_bytes(
-                    model, n, a.batch_size, width if cfg.routing == "sparsemax" else None),
-                "effective_width": width,
+                "flops_per_seq": model.flops_per_sequence(),
+                "attn_bytes": attention_memory_bytes(model, n, a.batch_size),
+                "attn_support": model.attention_stats()["attn_support"],
             })
             print(f"N={n:5d} {name:22s} fwd {speed['fwd_ms']:7.1f} ms  "
                   f"fwd+bwd {speed['fwd_bwd_ms']:7.1f} ms", flush=True)

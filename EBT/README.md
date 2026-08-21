@@ -1,196 +1,136 @@
-# EBT — a bench for sparse attention ideas
+# EBT — does sparsemax attention beat softmax attention?
 
 A small, self-contained testbed for one question:
 
-> Does replacing softmax with **sparsemax** inside attention, and/or replacing
-> "every head sees every token" with **MoSA-style expert-choice routing**,
-> actually buy anything over a plain softmax attention baseline?
+> If you replace softmax with **sparsemax** — the Euclidean projection onto the
+> probability simplex — inside attention, what do you gain and what do you pay?
 
-Everything here is deliberately tiny (a 2-layer encoder, ~100k params, synthetic
-tasks, CPU-only) so that the whole grid runs end to end in under an hour and
-every claim in the report is reproducible from one command.
+Everything is deliberately tiny (a 2-layer encoder, ~30k params, synthetic
+tasks, CPU-only) so the whole comparison runs end to end in minutes and every
+claim in the report is reproducible from one command.
 
 *(This lives inside the XCAP repo for convenience only; it shares no code with
 the rest of it.)*
 
-## The mechanisms
+## The mechanism
 
-Two orthogonal choices, six combinations, one shared implementation:
+Softmax gives every key a strictly positive weight, however irrelevant it is: a
+64-token row always has 64 non-zero weights. Sparsemax solves
 
-|                   | softmax rows        | sparsemax rows          |
-|-------------------|---------------------|-------------------------|
-| **dense** (no routing)      | `baseline-softmax` (control) | `dense-sparsemax` |
-| **top-k routing** (MoSA)    | `mosa-softmax`               | `mosa-sparsemax` ← the two-tier proposal |
-| **sparsemax routing**       | `smaxroute-softmax`          | `smaxroute-sparsemax` ← fully differentiable |
+    sparsemax(z) = argmin_{p in simplex} ||p - z||^2
 
-**Tier 1 — macro routing.** Each head owns a router `W_r: R^d -> R` and scores
-every token. *Top-k (MoSA)*: the head hard-selects its own `k = ratio * N`
-tokens, gathers them into a contiguous `k x d` block, attends inside the block,
-and scatters the result back; unselected positions get exactly zero from that
-head. Head outputs are gated by `sigmoid(router score)` so the router receives
-gradient. *Sparsemax routing*: the router scores go through sparsemax, tokens
-with exact-zero probability are dropped, and the survivors are gathered and
-gated by their (normalised) routing weight — so **the number of tokens a head
-takes is learned per sequence and per head** instead of hardcoded.
+whose solution is `max(z - tau(z), 0)` for a data-dependent threshold `tau`.
+Coordinates below the threshold are **exactly zero**, so the attention row
+becomes a genuinely sparse graph rather than a dense one with small numbers in
+it. The support size is not a hyperparameter — it falls out of the score
+distribution, per row.
 
-**Tier 2 — micro sparsity.** Inside the selected block, attention rows are
-normalised with either softmax (never exactly zero) or sparsemax (the Euclidean
-projection onto the simplex, which produces exact zeros and a genuinely sparse
-attention graph).
-
-All six variants share the same projections, head layout, MLP, initialisation
-and a learnable per-head temperature, so the parameter counts match to within
-0.5% and the only difference is the mechanism. (Temperature matters: sparsemax
-is *not* scale invariant, so a fixed `1/sqrt(d)` scale would silently decide how
-sparse it is allowed to be. Giving every variant a learnable temperature removes
-that confound.)
+The two variants under test are `baseline-softmax` and `sparsemax`. They share
+projections, head layout, MLP, initialisation and a learnable per-head
+temperature, so parameter counts and FLOPs are *identical* and the only
+difference is the normaliser. (The temperature is deliberately learnable and
+given to both: sparsemax is not scale invariant, so a hardcoded `1/sqrt(d)`
+would silently decide how sparse it is allowed to be.)
 
 ## The tasks
 
-Three probes chosen so the grid cannot be won by one inductive bias:
+Three probes chosen so the comparison cannot be won by one inductive bias:
 
-| task | what it needs | who should win |
+| task | what it needs | what it rewards |
 |---|---|---|
-| `associative_recall` | key-value pairs hidden among noise, query names a key → its value | content-addressed retrieval; a delta-shaped attention row is optimal → favours sparsity |
-| `needle` | noise everywhere, a few TAG-value pairs, a query naming one tag | ~90% of tokens are irrelevant → favours routing to a small subset |
-| `majority` | the most frequent symbol in the whole sequence | every token counts → favours dense, high-entropy attention; the honest counter-example |
+| `associative_recall` | key-value pairs hidden among noise, query names a key → its value | content-addressed retrieval; a delta-shaped attention row is optimal → rewards sparsity |
+| `needle` | noise everywhere, a few TAG-value pairs, a query naming one tag | ~90% of tokens are irrelevant → rewards ignoring them |
+| `majority` | the most frequent symbol in the whole sequence | every token counts → rewards dense, high-entropy attention; the honest counter-example |
 
 Each is per-position classification with a loss mask on the final position, so
 one training loop covers all three. `tests/test_tasks.py` checks the labels are
-correct, unpredictable from a constant, and (for `majority`) genuinely require
-the full sequence.
+correct, not predictable from a constant, and (for `majority`) that they really
+require the full sequence.
 
 ## What is measured
 
 * **Quality** — final/best eval accuracy and loss, plus steps-to-90% as a
   sample-efficiency proxy.
 * **Mechanism** — fraction of *exactly zero* attention weights, non-zero
-  weights per query row, attention entropy, token coverage (share of tokens
-  picked by at least one head), routed support size and its spread across
-  heads/sequences.
-* **Differentiability** — `router_grad_frac`, the measured share of router
-  logits that receive a non-zero gradient. This turns the usual hand-wave
-  ("top-k is non-differentiable") into a number.
+  weights per query row, row entropy, largest single weight.
 * **Cost** — wall-clock forward and forward+backward ms/batch, analytic
-  FLOPs/sequence, bytes held by the materialised attention matrices, and a
-  separate sweep of all of that against sequence length.
+  FLOPs/sequence, attention-matrix bytes, and a sweep of all of that against
+  sequence length.
 * **Stability** — mean and std of the gradient norm over training.
 
 ## What came out of it
 
-Full numbers in [`results/REPORT.md`](results/REPORT.md); raw runs in
-`results/results.json`. Setup: d_model 64, 4 heads, 2 layers, N=64, 1500 steps,
-2 seeds, capacity ratio 0.25 (k=16 of 64). Chance is 0.125 on all three tasks.
+`results/` starts empty — running the two commands below regenerates
+`results/results.json` and `results/REPORT.md`. The numbers quoted here come
+from a 2-seed run at d_model 64, N=64, 1500 steps (raw records preserved in git
+history at commit `1bf6bc2`). Chance accuracy is 0.125 on all three tasks.
 
-| variant | associative_recall | needle | majority |
-|---|---|---|---|
-| baseline-softmax | 0.320 | **0.357** | **1.000** |
-| dense-sparsemax | **0.340** | 0.314 | **1.000** |
-| mosa-softmax | 0.123 | 0.129 | 0.316 |
-| mosa-sparsemax | 0.121 | 0.111 | 0.223 |
-| smaxroute-softmax | 0.189 | 0.129 | 0.188 |
-| smaxroute-sparsemax | 0.115 | 0.182 | 0.191 |
+**1. Sparsemax matches softmax on accuracy.** Across all three tasks the two are
+within noise of each other, including a perfect 1.000 for both on `majority`.
+Whatever sparsemax throws away, it is not signal the model needed.
 
-**1. Sparsemax rows are free quality-wise, and they really are sparse.** In the
-dense setting sparsemax matches softmax everywhere (0.340 vs 0.320 on recall,
-0.314 vs 0.357 on needle, both perfect on majority) while zeroing **79% of the
-attention weights on average and 95% on `needle`** — 13 non-zero weights per
-query row instead of 64. That is the micro-tier claim, and it holds: you get a
-genuinely sparse attention graph without paying for it in accuracy.
+**2. And it really is sparse — adaptively so.** Non-zero weights per query row,
+out of 64:
 
-**2. But sparsemax costs wall clock, not saves it.** Dense sparsemax is
-**2.7x slower** than softmax at N=64 and 2.5x at N=512 (498 ms vs 199 ms
-forward), because the threshold search is a sort. Exact zeros are a
-*structural* property here, not a speed win — nothing downstream exploits them
-unless you write a kernel that does.
+| task | softmax | sparsemax |
+|---|---|---|
+| associative_recall | 64 | **3.4** |
+| needle | 64 | **2.9** |
+| majority | 64 | **34.1** |
 
-**3. Macro-routing is where the speed actually is.** At N=512 top-k routing is
-**13x faster** forward (14.9 ms vs 199.3 ms) and holds 4.2 MB of attention
-matrices instead of 67 MB, and the gap widens with N exactly as the k²/N²
-argument predicts.
+That last row is the interesting one. Nothing tells the model which task it is
+on, yet it goes near-one-hot for retrieval and stays broad for counting.
+Softmax cannot express either endpoint: it can approximate the first and never
+reaches exact zero. This is the real result — a normaliser that picks its own
+support size per row, per task, for free.
 
-**4. At this scale, routing destroys the tasks.** Every routed variant sits at
-or barely above chance on both retrieval tasks, and drops from 1.000 to
-0.19–0.32 on `majority`. Two distinct causes, both visible in the diagnostics:
-on `majority` routing is *provably* lossy — heads cover only 33–66% of tokens,
-and you cannot count a majority over tokens you never look at; on the retrieval
-tasks the router has to learn *which* tokens matter at the same time as the
-attention learns what to do with them, and 1500 steps is not enough for that
-chicken-and-egg to resolve. Stacking sparsemax on top of routing
-(`mosa-sparsemax`) never beat routing alone.
+**3. The bill is wall clock, not accuracy.** Sparsemax is ~2.5–2.7x slower,
+because finding `tau` is a sort. FLOPs and memory are identical by construction.
+So the exact zeros are a *structural* property, not a speed win: nothing
+downstream exploits them unless you write a kernel that skips them.
 
-**5. The differentiability argument did not survive contact.** The claim is
-that top-k gives unselected tokens zero gradient while sparsemax routing is
-"fully differentiable". Measured: top-k routing puts non-zero gradient on
-**1.5%** of router logits, sparsemax routing on **0.2–2.2%** — the same order.
-The reason is structural: sparsemax's own Jacobian is zero outside its support,
-so a token with exact-zero routing probability gets exactly zero gradient too.
-Sparsemax routing moves *where* the cut-off is, it does not remove it.
+**When it is worth it:** you want the sparse attention graph itself —
+interpretability, attention-based pruning or routing decisions, extracting a
+discrete structure from a trained model. **When it is not:** you only want
+throughput. For a cheaper middle ground, α-entmax with α=1.5 has a closed-form
+solution and needs no sort.
 
-**6. What sparsemax routing does deliver is a learned k.** Support size comes
-out at 6.8–8.4 tokens per head with a std of 3.3–4.0 *across heads and
-sequences* — the model genuinely allocates different budgets to different
-heads instead of a hardcoded 16, and it does so while using less than half the
-capacity top-k was given. That part of the proposal works; it just did not pay
-off in accuracy here.
-
-**Bottom line for the idea as pitched.** The two tiers do not compose the way
-the pitch assumes. Sparsemax is the cheap, safe half — free exact zeros at
-equal accuracy, at a wall-clock cost. MoSA is the fast half — big, scalable
-savings — but it is the half that has to *earn* its routing, and on tasks small
-enough to train on a CPU it never gets there. The honest next experiment is a
-longer budget on the retrieval tasks (does routed accuracy ever catch up?) and
-a router warm-start (dense for the first N steps, then route), which would
-separate "routing is wrong" from "routing is slow to learn".
-
-### Caveats on these numbers
+### Caveats
 2 seeds, 1500 steps, a 2-layer 30k-param model on CPU. The baseline itself only
-reaches ~0.34 on the retrieval tasks, so those columns compare *rates of early
-learning*, not converged accuracy. Every routed variant might look different
-with a longer schedule; nothing here says MoSA is a bad idea at scale, only
-that it is not free at small scale.
+reaches ~0.34 on the two retrieval tasks, so those columns compare *rates of
+early learning*, not converged accuracy; `majority` is the only task both
+variants solve outright.
+
+### What was dropped
+This bench originally also tested MoSA-style expert-choice routing (hard top-k
+per head) and sparsemax-as-a-router, in a 2x3 grid. Both mechanisms have been
+removed from the code. They were dropped because every routed variant sat at or
+near chance on all three tasks, and because the sparsemax router's claimed
+advantage — differentiable routing — did not survive measurement: non-zero
+router gradient reached 0.2–2.2% of logits versus 1.5% for hard top-k, since
+sparsemax's Jacobian is also zero outside its support. That code and its
+results are in git history at commit `1bf6bc2` if they are ever wanted back.
 
 ## Running it
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                       # ~90 tests, seconds
-python experiments/run_benchmark.py --steps 1000 --seeds 2 --workers 4 --threads 1
+python -m pytest -q                       # 72 tests, seconds
+python experiments/run_benchmark.py --steps 1500 --seeds 2 --seq-len 64 --d-model 64 --lr 3e-3
 python experiments/run_scaling.py
 python experiments/report.py              # writes results/REPORT.md + learning_curves.png
 ```
-
-`results/REPORT.md` is the generated write-up; `results/results.json` holds
-every raw run record including the full eval history.
 
 ## Layout
 
 ```
 ebt/sparsemax.py    sparsemax as an autograd.Function (+ masked softmax)
-ebt/attention.py    the 2x3 attention grid and its diagnostics
-ebt/variants.py     the six named configurations
+ebt/attention.py    the attention module and its diagnostics
+ebt/variants.py     the two named configurations
 ebt/tasks.py        the three synthetic probes
 ebt/model.py        tiny encoder transformer + FLOP/param accounting
-ebt/metrics.py      eval, speed benchmark, router-gradient coverage
+ebt/metrics.py      eval and speed benchmark
 ebt/train.py        training loop and the single-run experiment record
 experiments/        benchmark, scaling sweep, report generator
-tests/              unit tests for every mechanism and task
+tests/              unit tests for the normaliser, the attention and the tasks
 ```
-
-## Caveats, stated up front
-
-* **Expert-choice routing is not causal.** Which tokens a head selects depends
-  on the whole sequence, so it leaks future information in an autoregressive
-  setting (this is inherent to expert choice, not an implementation bug). The
-  benchmark tasks are therefore bidirectional/encoder-style. The `causal` flag
-  masks attention *within* a block by original position and is exercised by
-  the tests, but it does not make the routing decision causal.
-* **Wall-clock is CPU wall-clock at small N.** Top-k routing does a real gather
-  into a `k x k` block, so its speedup is real, but at these sizes the
-  projections dominate and none of this reflects a fused GPU kernel. The FLOP
-  and attention-memory columns are the scale-free part of the cost story.
-* **The sparsemax router's block width is `max` support across the batch**,
-  padded with dead slots, because ragged supports would need a custom kernel.
-  The maths is identical to dropping the zero-probability tokens; the wall
-  clock is pessimistic relative to what a ragged kernel would give.
-* Small model, synthetic tasks, 2 seeds. Directional evidence, not a paper.

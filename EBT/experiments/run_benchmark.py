@@ -34,8 +34,7 @@ def _job(args) -> dict:
         n_layers=opts["n_layers"], eval_every=opts["eval_every"],
         eval_batches=opts["eval_batches"], lr=opts["lr"],
     )
-    attn = variant(name, d_model=opts["d_model"], n_heads=opts["n_heads"],
-                   capacity_ratio=opts["capacity_ratio"])
+    attn = variant(name, d_model=opts["d_model"], n_heads=opts["n_heads"])
     t0 = time.perf_counter()
     res = run(task, attn, cfg, seq_len=opts["seq_len"])
     print(f"[done {time.perf_counter()-t0:6.1f}s] {task:20s} {name:22s} seed={seed} "
@@ -55,7 +54,6 @@ def main() -> None:
     ap.add_argument("--d-model", type=int, default=128)
     ap.add_argument("--n-heads", type=int, default=4)
     ap.add_argument("--n-layers", type=int, default=2)
-    ap.add_argument("--capacity-ratio", type=float, default=0.25)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--eval-every", type=int, default=100)
     ap.add_argument("--eval-batches", type=int, default=8)
@@ -66,7 +64,7 @@ def main() -> None:
 
     opts = {k: getattr(a, k) for k in
             ("steps", "batch_size", "n_layers", "eval_every", "eval_batches", "lr",
-             "d_model", "n_heads", "capacity_ratio", "seq_len", "threads")}
+             "d_model", "n_heads", "seq_len", "threads")}
     jobs = [(t, v, s, opts) for t in a.tasks for v in a.variants for s in range(a.seeds)]
     print(f"{len(jobs)} runs on {a.workers} workers "
           f"({a.steps} steps, N={a.seq_len}, d={a.d_model})", flush=True)

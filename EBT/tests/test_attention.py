@@ -10,7 +10,9 @@ B, N, D, H = 3, 32, 32, 4
 
 
 def cfg(**kw):
-    return AttentionConfig(d_model=D, n_heads=H, **kw)
+    kw.setdefault("d_model", D)
+    kw.setdefault("n_heads", H)
+    return AttentionConfig(**kw)
 
 
 def _x(requires_grad=False, seed=0):
@@ -46,8 +48,8 @@ def test_permutation_of_batch_is_independent(name):
     assert torch.allclose(att(x[perm]), out[perm], atol=1e-5)
 
 
-def test_dense_softmax_matches_reference_attention():
-    att = Attention(cfg(routing="none", normaliser="softmax", learn_temp=False)).eval()
+def test_softmax_matches_reference_attention():
+    att = Attention(cfg(normaliser="softmax", learn_temp=False)).eval()
     x = _x()
     q, k, v = (att._split(t) for t in att.qkv(x).chunk(3, dim=-1))
     ref = torch.softmax(q @ k.transpose(-1, -2) / math.sqrt(D // H), dim=-1) @ v
@@ -56,7 +58,7 @@ def test_dense_softmax_matches_reference_attention():
 
 
 def test_causal_mask_blocks_future_information():
-    att = Attention(cfg(routing="none", causal=True)).eval()
+    att = Attention(cfg(causal=True)).eval()
     x = _x(requires_grad=True)
     att(x)[:, N // 2].sum().backward()
     assert x.grad[:, N // 2 + 1 :].abs().max() == 0.0
@@ -64,7 +66,7 @@ def test_causal_mask_blocks_future_information():
 
 
 def test_noncausal_does_see_the_future():
-    att = Attention(cfg(routing="none", causal=False)).eval()
+    att = Attention(cfg(causal=False)).eval()
     x = _x(requires_grad=True)
     att(x)[:, 0].sum().backward()
     assert x.grad[:, 1:].abs().max() > 0.0
@@ -84,7 +86,7 @@ def test_padding_mask_removes_influence_of_padded_tokens(name):
 
 
 def test_sparsemax_attention_has_exact_zeros_when_logits_are_peaked():
-    att = Attention(cfg(routing="none", normaliser="sparsemax"))
+    att = Attention(cfg(normaliser="sparsemax"))
     with torch.no_grad():
         att.log_temp.fill_(math.log(20.0))     # sharpen
     att(_x())
@@ -92,7 +94,7 @@ def test_sparsemax_attention_has_exact_zeros_when_logits_are_peaked():
 
 
 def test_softmax_attention_has_no_exact_zeros():
-    att = Attention(cfg(routing="none", normaliser="softmax"))
+    att = Attention(cfg(normaliser="softmax"))
     with torch.no_grad():
         att.log_temp.fill_(math.log(20.0))
     att(_x())
@@ -103,27 +105,47 @@ def test_stats_are_recorded_for_every_variant():
     for c in all_variants(d_model=D, n_heads=H):
         att = Attention(c)
         att(_x())
-        for key in ("attn_zero_frac", "attn_entropy", "attn_support",
-                    "token_coverage", "route_support"):
+        for key in ("attn_zero_frac", "attn_entropy", "attn_support", "attn_max"):
             assert key in att.last_stats
             assert math.isfinite(att.last_stats[key])
 
 
-def test_flop_model_orders_variants_as_expected():
-    dense = attention_flops(cfg(routing="none"), 512)
-    mosa = attention_flops(cfg(routing="topk", capacity_ratio=0.25), 512)
-    assert mosa < dense
-    # the quadratic term shrinks by ~capacity_ratio^2
-    dense_q, mosa_q = dense - 4 * 512 * D * D, mosa - 4 * 512 * D * D - 512 * D * H
-    assert mosa_q == pytest.approx(dense_q * 0.25 ** 2, rel=1e-6)
+def test_sparsemax_support_shrinks_as_the_temperature_rises():
+    """The sparsity is data- and scale-dependent, not a fixed budget."""
+    supports = []
+    for temp in (0.25, 1.0, 8.0):
+        att = Attention(cfg(normaliser="sparsemax"))
+        with torch.no_grad():
+            att.log_temp.fill_(math.log(temp))
+        att(_x())
+        supports.append(att.last_stats["attn_support"])
+    assert supports[0] > supports[1] > supports[2]
+
+
+def test_sparsemax_rows_still_sum_to_one():
+    att = Attention(cfg(normaliser="sparsemax"))
+    x = _x()
+    q, k, _ = (att._split(t) for t in att.qkv(x).chunk(3, dim=-1))
+    attn = att.normalise(att._scores(q, k), dim=-1, mask=att._allowed(N, torch.ones(B, N, dtype=torch.bool)))
+    assert torch.allclose(attn.sum(-1), torch.ones(B, H, N), atol=1e-5)
+
+
+def test_flops_are_quadratic_in_sequence_length():
+    c = cfg()
+    quad = lambda n: attention_flops(c, n) - 4 * n * D * D
+    assert quad(512) == pytest.approx(quad(256) * 4, rel=1e-6)
+
+
+def test_flops_do_not_depend_on_the_normaliser():
+    """sparsemax changes which weights survive, not how many are computed."""
+    assert attention_flops(cfg(normaliser="softmax"), 256) == \
+        attention_flops(cfg(normaliser="sparsemax"), 256)
 
 
 def test_config_validation():
     with pytest.raises(ValueError):
-        AttentionConfig(routing="nope")
+        AttentionConfig(normaliser="nope")
     with pytest.raises(ValueError):
         AttentionConfig(d_model=10, n_heads=4)
     with pytest.raises(ValueError):
-        AttentionConfig(capacity_ratio=0.0)
-    with pytest.raises(ValueError):
-        AttentionConfig(router_gate="soft")
+        variant("no-such-variant")

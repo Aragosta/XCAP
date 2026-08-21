@@ -75,9 +75,9 @@ class Model(nn.Module):
         keys = per_layer[0]
         return {k: sum(d[k] for d in per_layer) / len(per_layer) for k in keys}
 
-    def flops_per_sequence(self, effective_k: float | None = None) -> float:
+    def flops_per_sequence(self) -> float:
         d = self.cfg.attn.d_model
-        attn = self.cfg.n_layers * attention_flops(self.cfg.attn, self.cfg.seq_len, effective_k)
+        attn = self.cfg.n_layers * attention_flops(self.cfg.attn, self.cfg.seq_len)
         mlp = self.cfg.n_layers * 2 * self.cfg.seq_len * d * d * self.cfg.mlp_ratio
         head = self.cfg.seq_len * d * self.cfg.n_classes
         return float(attn + mlp + head)

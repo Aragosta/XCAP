@@ -1,7 +1,8 @@
 import torch
 import pytest
 
-from ebt.tasks import AssociativeRecall, Majority, Needle, TASKS, build_task
+from ebt.tasks import (AssociativeRecall, Majority, Needle, Relational, TASKS,
+                       build_task)
 
 
 def gen(seed=0):
@@ -145,3 +146,41 @@ def test_sequence_length_too_short_raises():
         Needle(seq_len=8, n_needles=4)
     with pytest.raises(ValueError):
         AssociativeRecall(seq_len=4)
+
+
+def test_relational_label_is_the_object_of_the_queried_subject_relation_pair():
+    task = Relational(seq_len=64)
+    x, y, _ = task.batch(64, gen())
+    for b in range(64):
+        body = x[b, :-3]
+        facts = {(int(body[i]), int(body[i + 1])): int(body[i + 2]) - task.obj0
+                 for i in range(len(body) - 2)
+                 if task.subj0 <= int(body[i]) < task.rel0
+                 and task.rel0 <= int(body[i + 1]) < task.obj0}
+        assert len(facts) == task.n_facts
+        assert int(x[b, -3]) == task.query_tok
+        assert facts[(int(x[b, -2]), int(x[b, -1]))] == int(y[b, -1])
+
+
+def test_relational_subject_alone_is_not_enough():
+    """Each subject carries two relations with different objects, by construction."""
+    task = Relational(seq_len=64)
+    x, y, _ = task.batch(256, gen())
+    for b in range(64):
+        body = x[b, :-3]
+        by_subject = {}
+        for i in range(len(body) - 2):
+            if task.subj0 <= int(body[i]) < task.rel0:
+                by_subject.setdefault(int(body[i]), []).append(int(body[i + 2]))
+        assert all(len(set(objs)) == len(objs) >= 2 for objs in by_subject.values())
+
+
+def test_relational_relation_alone_is_not_enough():
+    """The same relation appears with several subjects and several objects."""
+    task = Relational(seq_len=64)
+    x, y, _ = task.batch(512, gen())
+    from collections import defaultdict
+    seen = defaultdict(set)
+    for b in range(512):
+        seen[int(x[b, -1])].add(int(y[b, -1]))
+    assert all(len(v) > 1 for v in seen.values())

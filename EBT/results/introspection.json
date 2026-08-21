@@ -1,0 +1,402 @@
+{
+ "config": {
+  "variants": [
+   "dot-softmax",
+   "energy-softmax",
+   "energy-sigmoid",
+   "transe-softmax",
+   "transe-sigmoid",
+   "rotate-softmax"
+  ],
+  "steps": 800,
+  "seq_len": 64,
+  "d_model": 64,
+  "n_heads": 4,
+  "n_layers": 2,
+  "lr": 0.003,
+  "batch_size": 32,
+  "threads": 4,
+  "out": "/home/user/XCAP/EBT/results/introspection.json"
+ },
+ "chance": 0.125,
+ "variants": {
+  "dot-softmax": {
+   "acc": 0.171875,
+   "layers": [
+    {
+     "layer": 0,
+     "mass_by_role": {
+      "subject": 0.038621410727500916,
+      "relation": 0.07328059524297714,
+      "object": 0.8028422594070435,
+      "noise": 0.08524967730045319,
+      "query": 6.126390417193761e-06
+     },
+     "mass_on_gold_object": 0.13151007890701294,
+     "mass_on_gold_object_best_head": 0.15005122125148773,
+     "argmax_is_gold_frac": 0.1337890625,
+     "per_head_gold_mass": [
+      0.113,
+      0.115,
+      0.147,
+      0.15
+     ],
+     "row_mass": 1.0,
+     "active_memories": 0.7660980224609375,
+     "entropy": 0.8994808197021484,
+     "mass_on_gold_object_init": 0.01558771450072527
+    },
+    {
+     "layer": 1,
+     "mass_by_role": {
+      "subject": 0.07767123728990555,
+      "relation": 0.1106853038072586,
+      "object": 0.10936097800731659,
+      "noise": 0.6999800205230713,
+      "query": 0.002302451990544796
+     },
+     "mass_on_gold_object": 0.017902696505188942,
+     "mass_on_gold_object_best_head": 0.03381488099694252,
+     "argmax_is_gold_frac": 0.01953125,
+     "per_head_gold_mass": [
+      0.019,
+      0.034,
+      0.01,
+      0.009
+     ],
+     "row_mass": 1.0,
+     "active_memories": 0.3756256103515625,
+     "entropy": 1.8241349458694458,
+     "mass_on_gold_object_init": 0.01560062263160944
+    }
+   ],
+   "train_acc_curve": [
+    0.234,
+    0.215,
+    0.27,
+    0.273
+   ],
+   "final_acc": 0.2734375,
+   "fwd_ms": 7.828354416687944
+  },
+  "energy-softmax": {
+   "acc": 0.2421875,
+   "layers": [
+    {
+     "layer": 0,
+     "mass_by_role": {
+      "subject": 0.0008446461288258433,
+      "relation": 0.017522364854812622,
+      "object": 0.6535458564758301,
+      "noise": 0.07807878404855728,
+      "query": 0.2500084936618805
+     },
+     "mass_on_gold_object": 0.12417979538440704,
+     "mass_on_gold_object_best_head": 0.20612506568431854,
+     "argmax_is_gold_frac": 0.123046875,
+     "per_head_gold_mass": [
+      0.0,
+      0.096,
+      0.206,
+      0.195
+     ],
+     "row_mass": 1.0,
+     "active_memories": 0.9369964599609375,
+     "entropy": 0.2618892192840576,
+     "mass_on_gold_object_init": 0.01561651285737753
+    },
+    {
+     "layer": 1,
+     "mass_by_role": {
+      "subject": 0.036611903458833694,
+      "relation": 0.03302055224776268,
+      "object": 0.4287133812904358,
+      "noise": 0.47906047105789185,
+      "query": 0.02259376458823681
+     },
+     "mass_on_gold_object": 0.07738637924194336,
+     "mass_on_gold_object_best_head": 0.10382633656263351,
+     "argmax_is_gold_frac": 0.0771484375,
+     "per_head_gold_mass": [
+      0.056,
+      0.104,
+      0.054,
+      0.096
+     ],
+     "row_mass": 1.0,
+     "active_memories": 0.37603759765625,
+     "entropy": 2.0308351516723633,
+     "mass_on_gold_object_init": 0.015636024996638298
+    }
+   ],
+   "train_acc_curve": [
+    0.156,
+    0.18,
+    0.234,
+    0.223
+   ],
+   "final_acc": 0.22265625,
+   "fwd_ms": 12.96182383331749
+  },
+  "energy-sigmoid": {
+   "acc": 0.2890625,
+   "layers": [
+    {
+     "layer": 0,
+     "mass_by_role": {
+      "subject": 0.022481050342321396,
+      "relation": 0.04679364711046219,
+      "object": 0.8284974694252014,
+      "noise": 0.10222659260034561,
+      "query": 1.3032796459810925e-06
+     },
+     "mass_on_gold_object": 0.13662675023078918,
+     "mass_on_gold_object_best_head": 0.1566644310951233,
+     "argmax_is_gold_frac": 0.1455078125,
+     "per_head_gold_mass": [
+      0.157,
+      0.122,
+      0.139,
+      0.129
+     ],
+     "row_mass": 1.9377045631408691,
+     "active_memories": 0.142333984375,
+     "entropy": 2.1051321029663086,
+     "mass_on_gold_object_init": 0.01573999784886837
+    },
+    {
+     "layer": 1,
+     "mass_by_role": {
+      "subject": 0.17547130584716797,
+      "relation": 0.0903366357088089,
+      "object": 0.001955586252734065,
+      "noise": 0.7319945693016052,
+      "query": 0.00024180706532206386
+     },
+     "mass_on_gold_object": 0.00016495907038915902,
+     "mass_on_gold_object_best_head": 0.0006269877776503563,
+     "argmax_is_gold_frac": 0.0,
+     "per_head_gold_mass": [
+      0.001,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "row_mass": 0.19736561179161072,
+     "active_memories": 0.006014073733240366,
+     "entropy": 1.1807949542999268,
+     "mass_on_gold_object_init": 0.015579341910779476
+    }
+   ],
+   "train_acc_curve": [
+    0.23,
+    0.293,
+    0.277,
+    0.285
+   ],
+   "final_acc": 0.28515625,
+   "fwd_ms": 10.659257416667364
+  },
+  "transe-softmax": {
+   "acc": 0.26171875,
+   "layers": [
+    {
+     "layer": 0,
+     "mass_by_role": {
+      "subject": 0.0051818727515637875,
+      "relation": 0.011767221614718437,
+      "object": 0.9708809852600098,
+      "noise": 0.012169908732175827,
+      "query": 7.89366261244595e-09
+     },
+     "mass_on_gold_object": 0.1594620794057846,
+     "mass_on_gold_object_best_head": 0.17209266126155853,
+     "argmax_is_gold_frac": 0.158203125,
+     "per_head_gold_mass": [
+      0.142,
+      0.168,
+      0.156,
+      0.172
+     ],
+     "row_mass": 1.0,
+     "active_memories": 0.5427093505859375,
+     "entropy": 1.3327224254608154,
+     "relation_slot_purity": 0.711,
+     "relation_slots_used": 3.75,
+     "relation_entropy": 0.652,
+     "mass_on_gold_object_init": 0.015745121985673904,
+     "relation_slot_purity_init": 1.0
+    },
+    {
+     "layer": 1,
+     "mass_by_role": {
+      "subject": 0.11164623498916626,
+      "relation": 0.10240611433982849,
+      "object": 0.31173256039619446,
+      "noise": 0.4710414409637451,
+      "query": 0.0031736374367028475
+     },
+     "mass_on_gold_object": 0.047265373170375824,
+     "mass_on_gold_object_best_head": 0.05540682375431061,
+     "argmax_is_gold_frac": 0.0458984375,
+     "per_head_gold_mass": [
+      0.047,
+      0.051,
+      0.055,
+      0.035
+     ],
+     "row_mass": 1.0,
+     "active_memories": 0.550811767578125,
+     "entropy": 1.2262649536132812,
+     "relation_slot_purity": 0.391,
+     "relation_slots_used": 4.0,
+     "relation_entropy": 0.779,
+     "mass_on_gold_object_init": 0.015599926002323627,
+     "relation_slot_purity_init": 0.969
+    }
+   ],
+   "train_acc_curve": [
+    0.23,
+    0.23,
+    0.246,
+    0.242
+   ],
+   "final_acc": 0.2421875,
+   "fwd_ms": 14.785283749991626
+  },
+  "transe-sigmoid": {
+   "acc": 0.12109375,
+   "layers": [
+    {
+     "layer": 0,
+     "mass_by_role": {
+      "subject": 0.2851877510547638,
+      "relation": 0.11174783855676651,
+      "object": 0.2802341878414154,
+      "noise": 0.304596871137619,
+      "query": 0.018233276903629303
+     },
+     "mass_on_gold_object": 0.05055113136768341,
+     "mass_on_gold_object_best_head": 0.08967968821525574,
+     "argmax_is_gold_frac": 0.0546875,
+     "per_head_gold_mass": [
+      0.075,
+      0.002,
+      0.036,
+      0.09
+     ],
+     "row_mass": 1.27463960647583,
+     "active_memories": 0.01715087890625,
+     "entropy": 2.1223716735839844,
+     "relation_slot_purity": 0.363,
+     "relation_slots_used": 4.0,
+     "relation_entropy": 1.079,
+     "mass_on_gold_object_init": 0.015524536371231079,
+     "relation_slot_purity_init": 0.711
+    },
+    {
+     "layer": 1,
+     "mass_by_role": {
+      "subject": 0.10835473984479904,
+      "relation": 0.14019009470939636,
+      "object": 0.10066895931959152,
+      "noise": 0.6331788301467896,
+      "query": 0.017607297748327255
+     },
+     "mass_on_gold_object": 0.01654251664876938,
+     "mass_on_gold_object_best_head": 0.01882348395884037,
+     "argmax_is_gold_frac": 0.01171875,
+     "per_head_gold_mass": [
+      0.019,
+      0.017,
+      0.016,
+      0.014
+     ],
+     "row_mass": 10.202299118041992,
+     "active_memories": 0.1517486572265625,
+     "entropy": 3.5186572074890137,
+     "relation_slot_purity": 0.48,
+     "relation_slots_used": 4.0,
+     "relation_entropy": 1.284,
+     "mass_on_gold_object_init": 0.015622071921825409,
+     "relation_slot_purity_init": 0.652
+    }
+   ],
+   "train_acc_curve": [
+    0.125,
+    0.121,
+    0.156,
+    0.156
+   ],
+   "final_acc": 0.15625,
+   "fwd_ms": 15.714731000040654
+  },
+  "rotate-softmax": {
+   "acc": 0.22265625,
+   "layers": [
+    {
+     "layer": 0,
+     "mass_by_role": {
+      "subject": 0.011503159999847412,
+      "relation": 0.1634138524532318,
+      "object": 0.6765978336334229,
+      "noise": 0.14848515391349792,
+      "query": 4.025911006476368e-14
+     },
+     "mass_on_gold_object": 0.10699422657489777,
+     "mass_on_gold_object_best_head": 0.1298370361328125,
+     "argmax_is_gold_frac": 0.1064453125,
+     "per_head_gold_mass": [
+      0.098,
+      0.111,
+      0.09,
+      0.13
+     ],
+     "row_mass": 1.0,
+     "active_memories": 0.4921417236328125,
+     "entropy": 1.562617301940918,
+     "relation_slot_purity": 0.363,
+     "relation_slots_used": 4.0,
+     "relation_entropy": 0.718,
+     "mass_on_gold_object_init": 0.015669219195842743,
+     "relation_slot_purity_init": 1.0
+    },
+    {
+     "layer": 1,
+     "mass_by_role": {
+      "subject": 0.07830797880887985,
+      "relation": 0.12367047369480133,
+      "object": 0.2531118392944336,
+      "noise": 0.531691312789917,
+      "query": 0.013218424282968044
+     },
+     "mass_on_gold_object": 0.039907898753881454,
+     "mass_on_gold_object_best_head": 0.09164032340049744,
+     "argmax_is_gold_frac": 0.05078125,
+     "per_head_gold_mass": [
+      0.006,
+      0.013,
+      0.05,
+      0.092
+     ],
+     "row_mass": 1.0,
+     "active_memories": 0.23284912109375,
+     "entropy": 2.1674511432647705,
+     "relation_slot_purity": 0.391,
+     "relation_slots_used": 3.5,
+     "relation_entropy": 0.615,
+     "mass_on_gold_object_init": 0.0156315378844738,
+     "relation_slot_purity_init": 0.992
+    }
+   ],
+   "train_acc_curve": [
+    0.227,
+    0.152,
+    0.246,
+    0.246
+   ],
+   "final_acc": 0.24609375,
+   "fwd_ms": 15.035802749935101
+  }
+ }
+}

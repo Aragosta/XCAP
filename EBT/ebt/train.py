@@ -95,6 +95,7 @@ def run(task_name: str, attn_cfg: AttentionConfig, train_cfg: TrainConfig,
         "train_seconds": train_seconds,
         "grad_norm_mean": mean(grad_norms),
         "grad_norm_std": pstdev(grad_norms),
+        "state_dict": model.state_dict(),
         **speed,
     }
     return result

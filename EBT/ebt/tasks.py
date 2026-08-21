@@ -156,7 +156,68 @@ class Majority(Task):
         return x + 1, y, mask  # +1 keeps 0 free as PAD
 
 
+class Relational(Task):
+    """Facts as (subject, relation, object) triples hidden among noise.
+
+    Layout: `[... noise ... s r o ... noise ..., QUERY, s, r]` -> the object.
+
+    Every subject appears with **two different relations and two different
+    objects**, so the subject alone is worth at most chance-between-two: the
+    model is forced to combine subject *and* relation.  This is the structure
+    the relational energy scores are supposed to exploit --
+    `Paris --capital-of--> France` vs `Paris --located-on--> Seine`.
+    """
+
+    def __init__(self, seq_len: int = 64, n_noise: int = 16, n_subjects: int = 8,
+                 n_relations: int = 3, n_objects: int = 8, n_facts_per_subject: int = 2,
+                 n_subjects_shown: int = 3):
+        if n_relations < n_facts_per_subject or n_objects < 2:
+            raise ValueError("need at least as many relations as facts per subject")
+        n_facts = n_subjects_shown * n_facts_per_subject
+        if seq_len < 3 * n_facts + 3:
+            raise ValueError("sequence too short for the requested facts")
+        self.n_noise, self.n_subjects = n_noise, n_subjects
+        self.n_relations, self.n_objects = n_relations, n_objects
+        self.per_subject, self.n_shown, self.n_facts = n_facts_per_subject, n_subjects_shown, n_facts
+        self.noise0 = 1
+        self.subj0 = 1 + n_noise
+        self.rel0 = self.subj0 + n_subjects
+        self.obj0 = self.rel0 + n_relations
+        self.query_tok = self.obj0 + n_objects
+        super().__init__("relational", seq_len, self.query_tok + 1, n_objects)
+
+    def batch(self, batch_size: int, g: torch.Generator) -> Batch:
+        b, n, f = batch_size, self.seq_len, self.n_facts
+        body = n - 3
+        x = torch.zeros(b, n, dtype=torch.long)
+        x[:, :body] = _randint(self.n_noise, (b, body), g) + self.noise0
+
+        rows = torch.arange(b)[:, None].expand(-1, f)
+        subs = torch.argsort(torch.rand(b, self.n_subjects, generator=g), 1)[:, : self.n_shown]
+        subs = subs.repeat_interleave(self.per_subject, dim=1)                 # [B,F]
+        rels = torch.stack([torch.argsort(torch.rand(b, self.n_relations, generator=g), 1)
+                            [:, : self.per_subject] for _ in range(self.n_shown)], 1).flatten(1)
+        objs = torch.stack([torch.argsort(torch.rand(b, self.n_objects, generator=g), 1)
+                            [:, : self.per_subject] for _ in range(self.n_shown)], 1).flatten(1)
+        slots = torch.argsort(torch.rand(b, body // 3, generator=g), 1)[:, :f] * 3
+        x[rows, slots] = subs + self.subj0
+        x[rows, slots + 1] = rels + self.rel0
+        x[rows, slots + 2] = objs + self.obj0
+
+        which = _randint(f, (b,), g)
+        idx = torch.arange(b)
+        x[:, -3] = self.query_tok
+        x[:, -2] = subs[idx, which] + self.subj0
+        x[:, -1] = rels[idx, which] + self.rel0
+        y = torch.zeros(b, n, dtype=torch.long)
+        y[:, -1] = objs[idx, which]
+        mask = torch.zeros(b, n, dtype=torch.bool)
+        mask[:, -1] = True
+        return x, y, mask
+
+
 TASKS = {
+    "relational": Relational,
     "associative_recall": AssociativeRecall,
     "needle": Needle,
     "majority": Majority,

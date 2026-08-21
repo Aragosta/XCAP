@@ -49,7 +49,7 @@ def test_permutation_of_batch_is_independent(name):
 
 
 def test_softmax_matches_reference_attention():
-    att = Attention(cfg(normaliser="softmax", learn_temp=False)).eval()
+    att = Attention(cfg(score="dot", gate="softmax", learn_temp=False)).eval()
     x = _x()
     q, k, v = (att._split(t) for t in att.qkv(x).chunk(3, dim=-1))
     ref = torch.softmax(q @ k.transpose(-1, -2) / math.sqrt(D // H), dim=-1) @ v
@@ -86,7 +86,7 @@ def test_padding_mask_removes_influence_of_padded_tokens(name):
 
 
 def test_sparsemax_attention_has_exact_zeros_when_logits_are_peaked():
-    att = Attention(cfg(normaliser="sparsemax"))
+    att = Attention(cfg(score="dot", gate="sparsemax"))
     with torch.no_grad():
         att.log_temp.fill_(math.log(20.0))     # sharpen
     att(_x())
@@ -94,7 +94,7 @@ def test_sparsemax_attention_has_exact_zeros_when_logits_are_peaked():
 
 
 def test_softmax_attention_has_no_exact_zeros():
-    att = Attention(cfg(normaliser="softmax"))
+    att = Attention(cfg(score="dot", gate="softmax"))
     with torch.no_grad():
         att.log_temp.fill_(math.log(20.0))
     att(_x())
@@ -114,7 +114,7 @@ def test_sparsemax_support_shrinks_as_the_temperature_rises():
     """The sparsity is data- and scale-dependent, not a fixed budget."""
     supports = []
     for temp in (0.25, 1.0, 8.0):
-        att = Attention(cfg(normaliser="sparsemax"))
+        att = Attention(cfg(score="dot", gate="sparsemax"))
         with torch.no_grad():
             att.log_temp.fill_(math.log(temp))
         att(_x())
@@ -122,12 +122,11 @@ def test_sparsemax_support_shrinks_as_the_temperature_rises():
     assert supports[0] > supports[1] > supports[2]
 
 
-def test_sparsemax_rows_still_sum_to_one():
-    att = Attention(cfg(normaliser="sparsemax"))
-    x = _x()
-    q, k, _ = (att._split(t) for t in att.qkv(x).chunk(3, dim=-1))
-    attn = att.normalise(att._scores(q, k), dim=-1, mask=att._allowed(N, torch.ones(B, N, dtype=torch.bool)))
-    assert torch.allclose(attn.sum(-1), torch.ones(B, H, N), atol=1e-5)
+def test_competitive_gates_produce_rows_that_sum_to_one():
+    for gate in ("softmax", "sparsemax"):
+        att = Attention(cfg(score="dot", gate=gate))
+        att(_x())
+        assert att.last_stats["attn_row_mass"] == pytest.approx(1.0, abs=1e-4)
 
 
 def test_flops_are_quadratic_in_sequence_length():
@@ -136,15 +135,18 @@ def test_flops_are_quadratic_in_sequence_length():
     assert quad(512) == pytest.approx(quad(256) * 4, rel=1e-6)
 
 
-def test_flops_do_not_depend_on_the_normaliser():
-    """sparsemax changes which weights survive, not how many are computed."""
-    assert attention_flops(cfg(normaliser="softmax"), 256) == \
-        attention_flops(cfg(normaliser="sparsemax"), 256)
+def test_flops_do_not_depend_on_the_gate_at_leading_order():
+    """The gate changes which weights survive, not how many are computed."""
+    soft = attention_flops(cfg(score="dot", gate="softmax"), 256)
+    spars = attention_flops(cfg(score="dot", gate="sparsemax"), 256)
+    energy = attention_flops(cfg(score="energy", gate="softmax"), 256)
+    assert soft == spars
+    assert abs(energy - soft) / soft < 0.05, "the energy expands to the same matmul"
 
 
 def test_config_validation():
     with pytest.raises(ValueError):
-        AttentionConfig(normaliser="nope")
+        AttentionConfig(score="nope")
     with pytest.raises(ValueError):
         AttentionConfig(d_model=10, n_heads=4)
     with pytest.raises(ValueError):

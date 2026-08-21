@@ -32,11 +32,21 @@ def test_model_forward_backward(name):
 
 
 @pytest.mark.parametrize("name", VARIANT_NAMES)
-def test_parameter_counts_are_comparable_across_variants(name):
+def test_extra_parameters_are_only_the_declared_mechanism(name):
+    """Variants may add machinery, but every added parameter must be accounted for.
+
+    dot/energy variants must match the control exactly; the sigmoid gate adds
+    its thresholds and the relational scores add a selector plus a codebook,
+    and nothing else.
+    """
     task = build_task("needle", SEQ)
-    base = build_model(task, small("baseline-softmax")).n_params()
-    other = build_model(task, small(name)).n_params()
-    assert abs(other - base) / base < 0.02, "variants must not differ in capacity"
+    base = build_model(task, small("dot-softmax"))
+    other = build_model(task, small(name))
+    extra_names = ("tau_bias", "tau_proj", "rel_select", "relations")
+    declared = sum(p.numel() for n, p in other.named_parameters()
+                   if any(e in n for e in extra_names))
+    assert other.n_params() - base.n_params() == declared
+    assert declared / base.n_params() < 0.10, "the mechanism must stay a small overhead"
 
 
 @pytest.mark.parametrize("name", VARIANT_NAMES)
@@ -58,7 +68,7 @@ def test_model_can_overfit_a_single_batch(name):
 
 def test_evaluate_is_deterministic_for_a_seed():
     task = build_task("majority", SEQ)
-    model = build_model(task, small("baseline-softmax"))
+    model = build_model(task, small("dot-softmax"))
     a = evaluate(model, task, 2, 8, seed=3)
     b = evaluate(model, task, 2, 8, seed=3)
     assert a["loss"] == pytest.approx(b["loss"])
@@ -67,31 +77,31 @@ def test_evaluate_is_deterministic_for_a_seed():
 
 def test_evaluate_restores_training_mode():
     task = build_task("majority", SEQ)
-    model = build_model(task, small("baseline-softmax"))
+    model = build_model(task, small("dot-softmax"))
     model.train()
     evaluate(model, task, 1, 4, seed=0)
     assert model.training
 
 
 def test_flops_and_memory_grow_quadratically_with_length():
-    short = build_model(build_task("majority", 128), small("baseline-softmax"))
-    long = build_model(build_task("majority", 256), small("baseline-softmax"))
+    short = build_model(build_task("majority", 128), small("dot-softmax"))
+    long = build_model(build_task("majority", 256), small("dot-softmax"))
     assert attention_memory_bytes(long, 256, 8) == 4 * attention_memory_bytes(short, 128, 8)
     assert long.flops_per_sequence() > 2 * short.flops_per_sequence()
 
 
-def test_the_two_variants_cost_the_same_on_paper():
-    """Any measured speed difference is the normaliser's runtime, not its FLOPs."""
+def test_variants_hold_the_same_attention_matrix():
+    """Any measured speed difference is runtime, not a different amount of work."""
     task = build_task("majority", 128)
-    a = build_model(task, small("baseline-softmax"))
-    b = build_model(task, small("sparsemax"))
-    assert a.flops_per_sequence() == b.flops_per_sequence()
+    a = build_model(task, small("dot-softmax"))
+    b = build_model(task, small("energy-softmax"))
     assert attention_memory_bytes(a, 128, 4) == attention_memory_bytes(b, 128, 4)
+    assert abs(a.flops_per_sequence() - b.flops_per_sequence()) / a.flops_per_sequence() < 0.05
 
 
 def test_benchmark_speed_returns_positive_timings():
     task = build_task("majority", SEQ)
-    model = build_model(task, small("baseline-softmax"))
+    model = build_model(task, small("dot-softmax"))
     out = benchmark_speed(model, task, 4, iters=2, warmup=1)
     # no relative timing assertions here: wall clock is far too noisy on a
     # loaded machine to be a unit test.  Scaling behaviour is measured by
@@ -103,7 +113,7 @@ def test_benchmark_speed_returns_positive_timings():
 def test_run_produces_a_complete_result_record():
     cfg = TrainConfig(steps=20, batch_size=8, eval_every=10, eval_batches=1,
                       eval_batch_size=8, warmup=5, n_layers=1, seed=0)
-    res = run("associative_recall", small("sparsemax"), cfg, seq_len=SEQ)
+    res = run("associative_recall", small("energy-softmax"), cfg, seq_len=SEQ)
     for key in ("task", "variant", "final_acc", "final_loss", "history", "params",
                 "flops_per_seq", "fwd_ms", "grad_norm_mean", "attn_matrix_bytes"):
         assert key in res
@@ -114,6 +124,6 @@ def test_run_produces_a_complete_result_record():
 def test_run_is_reproducible():
     cfg = TrainConfig(steps=10, batch_size=8, eval_every=10, eval_batches=1,
                       eval_batch_size=8, warmup=2, n_layers=1, seed=1)
-    a = run("needle", small("baseline-softmax"), cfg, seq_len=SEQ)
-    b = run("needle", small("baseline-softmax"), cfg, seq_len=SEQ)
+    a = run("needle", small("dot-softmax"), cfg, seq_len=SEQ)
+    b = run("needle", small("dot-softmax"), cfg, seq_len=SEQ)
     assert a["final_loss"] == pytest.approx(b["final_loss"], rel=1e-6)

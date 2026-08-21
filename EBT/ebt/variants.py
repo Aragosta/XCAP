@@ -1,4 +1,4 @@
-"""The two configurations under test."""
+"""Named configurations under test."""
 
 from __future__ import annotations
 
@@ -6,12 +6,25 @@ from dataclasses import replace
 
 from .attention import AttentionConfig
 
-_NAMES = {"softmax": "baseline-softmax", "sparsemax": "sparsemax"}
+_NAMES = {
+    ("dot", "softmax"): "dot-softmax",          # the control: standard attention
+    ("dot", "sparsemax"): "dot-sparsemax",      # exact-zero rows, same score
+    ("energy", "softmax"): "energy-softmax",    # E = ||q-k||^2, competitive gate
+    ("energy", "sigmoid"): "energy-sigmoid",    # E = ||q-k||^2, independent gates
+    ("transe", "softmax"): "transe-softmax",    # relational: g_r(z) = z + r
+    ("transe", "sigmoid"): "transe-sigmoid",
+    ("rotate", "softmax"): "rotate-softmax",    # relational: g_r(z) = z o r
+}
+
+DEFAULT_GRID = ["dot-softmax", "energy-softmax", "energy-sigmoid",
+                "transe-softmax", "transe-sigmoid", "rotate-softmax"]
 
 
-def all_variants(d_model: int = 128, n_heads: int = 4, causal: bool = False) -> list[AttentionConfig]:
-    base = AttentionConfig(d_model=d_model, n_heads=n_heads, causal=causal)
-    return [replace(base, normaliser=nrm, name=name) for nrm, name in _NAMES.items()]
+def all_variants(d_model: int = 128, n_heads: int = 4, causal: bool = False,
+                 n_relations: int = 4) -> list[AttentionConfig]:
+    base = AttentionConfig(d_model=d_model, n_heads=n_heads, causal=causal,
+                           n_relations=n_relations)
+    return [replace(base, score=sc, gate=g, name=name) for (sc, g), name in _NAMES.items()]
 
 
 def variant(name: str, **kwargs) -> AttentionConfig:

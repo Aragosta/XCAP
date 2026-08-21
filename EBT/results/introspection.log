@@ -1,0 +1,33 @@
+relational task: 6 facts, 8 objects, chance 0.125
+
+=== dot-softmax   acc 0.273   curve [0.234, 0.215, 0.27, 0.273]   fwd 7.8 ms
+  layer 0: mass  subj 0.04 rel 0.07 obj 0.80 noise 0.09 | gold-obj 0.132 (init 0.016, best head 0.150, argmax 0.13) | rowmass 1.00 active 0.8 H 0.90
+  layer 1: mass  subj 0.08 rel 0.11 obj 0.11 noise 0.70 | gold-obj 0.018 (init 0.016, best head 0.034, argmax 0.02) | rowmass 1.00 active 0.4 H 1.82
+  heads (gold-object mass): [0.019, 0.034, 0.01, 0.009]
+
+=== energy-softmax   acc 0.223   curve [0.156, 0.18, 0.234, 0.223]   fwd 13.0 ms
+  layer 0: mass  subj 0.00 rel 0.02 obj 0.65 noise 0.08 | gold-obj 0.124 (init 0.016, best head 0.206, argmax 0.12) | rowmass 1.00 active 0.9 H 0.26
+  layer 1: mass  subj 0.04 rel 0.03 obj 0.43 noise 0.48 | gold-obj 0.077 (init 0.016, best head 0.104, argmax 0.08) | rowmass 1.00 active 0.4 H 2.03
+  heads (gold-object mass): [0.056, 0.104, 0.054, 0.096]
+
+=== energy-sigmoid   acc 0.285   curve [0.23, 0.293, 0.277, 0.285]   fwd 10.7 ms
+  layer 0: mass  subj 0.02 rel 0.05 obj 0.83 noise 0.10 | gold-obj 0.137 (init 0.016, best head 0.157, argmax 0.15) | rowmass 1.94 active 0.1 H 2.11
+  layer 1: mass  subj 0.18 rel 0.09 obj 0.00 noise 0.73 | gold-obj 0.000 (init 0.016, best head 0.001, argmax 0.00) | rowmass 0.20 active 0.0 H 1.18
+  heads (gold-object mass): [0.001, 0.0, 0.0, 0.0]
+
+=== transe-softmax   acc 0.242   curve [0.23, 0.23, 0.246, 0.242]   fwd 14.8 ms
+  layer 0: mass  subj 0.01 rel 0.01 obj 0.97 noise 0.01 | gold-obj 0.159 (init 0.016, best head 0.172, argmax 0.16) | rowmass 1.00 active 0.5 H 1.33 | slot purity 0.71 (init 1.00)
+  layer 1: mass  subj 0.11 rel 0.10 obj 0.31 noise 0.47 | gold-obj 0.047 (init 0.016, best head 0.055, argmax 0.05) | rowmass 1.00 active 0.6 H 1.23 | slot purity 0.39 (init 0.97)
+  heads (gold-object mass): [0.047, 0.051, 0.055, 0.035]
+
+=== transe-sigmoid   acc 0.156   curve [0.125, 0.121, 0.156, 0.156]   fwd 15.7 ms
+  layer 0: mass  subj 0.29 rel 0.11 obj 0.28 noise 0.30 | gold-obj 0.051 (init 0.016, best head 0.090, argmax 0.05) | rowmass 1.27 active 0.0 H 2.12 | slot purity 0.36 (init 0.71)
+  layer 1: mass  subj 0.11 rel 0.14 obj 0.10 noise 0.63 | gold-obj 0.017 (init 0.016, best head 0.019, argmax 0.01) | rowmass 10.20 active 0.2 H 3.52 | slot purity 0.48 (init 0.65)
+  heads (gold-object mass): [0.019, 0.017, 0.016, 0.014]
+
+=== rotate-softmax   acc 0.246   curve [0.227, 0.152, 0.246, 0.246]   fwd 15.0 ms
+  layer 0: mass  subj 0.01 rel 0.16 obj 0.68 noise 0.15 | gold-obj 0.107 (init 0.016, best head 0.130, argmax 0.11) | rowmass 1.00 active 0.5 H 1.56 | slot purity 0.36 (init 1.00)
+  layer 1: mass  subj 0.08 rel 0.12 obj 0.25 noise 0.53 | gold-obj 0.040 (init 0.016, best head 0.092, argmax 0.05) | rowmass 1.00 active 0.2 H 2.17 | slot purity 0.39 (init 0.99)
+  heads (gold-object mass): [0.006, 0.013, 0.05, 0.092]
+
+wrote /home/user/XCAP/EBT/results/introspection.json

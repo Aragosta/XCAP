@@ -1,0 +1,5 @@
+45 runs on 4 workers (800 steps, N=64, d=64)
+[done  147.8s] relational           dot-softmax-tied       seed=0 acc=0.211 loss=2.051
+[done  151.6s] relational           dot-softmax            seed=0 acc=0.195 loss=1.999
+[done  169.9s] relational           energy-softmax-tied    seed=0 acc=0.215 loss=1.921
+[done  184.8s] relational           energy-softmax         seed=0 acc=0.133 loss=2.082

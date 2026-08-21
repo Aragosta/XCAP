@@ -63,6 +63,7 @@ class AttentionConfig:
     score: str = "dot"
     gate: str = "softmax"
     n_relations: int = 4          # codebook size for the relational scores
+    tie_qk: bool = False          # W_Q = W_K, as L2 self-attention requires
     causal: bool = False
     learn_temp: bool = True
     dropout: float = 0.0
@@ -89,7 +90,9 @@ class Attention(nn.Module):
         self.cfg = cfg
         h, dh = cfg.n_heads, cfg.d_model // cfg.n_heads
         self.d_head = dh
-        self.qkv = nn.Linear(cfg.d_model, 3 * cfg.d_model, bias=False)
+        # tie_qk shares one projection between queries and keys: the constraint
+        # under which L2/energy attention is Lipschitz (Kim et al., ICML 2021).
+        self.qkv = nn.Linear(cfg.d_model, (2 if cfg.tie_qk else 3) * cfg.d_model, bias=False)
         self.out_proj = nn.Linear(cfg.d_model, cfg.d_model, bias=False)
         self.drop = nn.Dropout(cfg.dropout)
         self.log_temp = nn.Parameter(torch.zeros(h), requires_grad=cfg.learn_temp)
@@ -167,7 +170,13 @@ class Attention(nn.Module):
     # ----------------------------------------------------------------- forward
     def forward(self, x: Tensor, key_padding_mask: Tensor | None = None) -> Tensor:
         b, n, _ = x.shape
-        q, k, v = (self._split(t) for t in self.qkv(x).chunk(3, dim=-1))
+        parts = self.qkv(x).chunk(2 if self.cfg.tie_qk else 3, dim=-1)
+        if self.cfg.tie_qk:
+            qk, v = parts
+            q = k = self._split(qk)
+            v = self._split(v)
+        else:
+            q, k, v = (self._split(t) for t in parts)
         valid = (
             torch.ones(b, n, device=x.device, dtype=torch.bool)
             if key_padding_mask is None
@@ -226,7 +235,7 @@ def attention_flops(cfg: AttentionConfig, n: int) -> float:
     selector and a codebook mix, both linear in N.
     """
     d, h = cfg.d_model, cfg.n_heads
-    proj = 4 * n * d * d
+    proj = (3 if cfg.tie_qk else 4) * n * d * d
     attn = 2 * h * (n ** 2) * (d / h)
     extra = 2 * n * d if cfg.score != "dot" else 0
     if cfg.score in RELATIONAL:

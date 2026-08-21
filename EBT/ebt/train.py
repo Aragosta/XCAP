@@ -9,6 +9,7 @@ from statistics import mean, pstdev
 import torch
 
 from .attention import AttentionConfig
+from .calibrate import calibrate_temperature
 from .metrics import (attention_memory_bytes, benchmark_speed, evaluate,
                       masked_loss_and_acc)
 from .model import build_model
@@ -30,6 +31,7 @@ class TrainConfig:
     n_layers: int = 2
     dropout: float = 0.0
     acc_threshold: float = 0.9      # for "steps to reach" sample efficiency
+    calibrate_entropy: float = 0.9  # match init attention entropy across variants; 0 = off
 
 
 def _lr_at(step: int, cfg: TrainConfig) -> float:
@@ -44,8 +46,17 @@ def run(task_name: str, attn_cfg: AttentionConfig, train_cfg: TrainConfig,
     torch.manual_seed(train_cfg.seed)
     task = build_task(task_name, seq_len)
     model = build_model(task, attn_cfg, n_layers=train_cfg.n_layers, dropout=train_cfg.dropout)
-    opt = torch.optim.AdamW(model.parameters(), lr=train_cfg.lr, weight_decay=train_cfg.weight_decay)
     g = torch.Generator().manual_seed(train_cfg.seed + 10_000)
+    log_temps = {}
+    if train_cfg.calibrate_entropy:
+        # Different score functions live at different points on the Hopfield
+        # temperature phase diagram for the same nominal temperature.  Start
+        # them all at the same attention sharpness so the benchmark compares
+        # score functions rather than betas.
+        log_temps = calibrate_temperature(
+            model, task.batch(64, torch.Generator().manual_seed(1234))[0],
+            target_frac=train_cfg.calibrate_entropy)
+    opt = torch.optim.AdamW(model.parameters(), lr=train_cfg.lr, weight_decay=train_cfg.weight_decay)
 
     history, grad_norms = [], []
     steps_to_threshold = None
@@ -95,6 +106,7 @@ def run(task_name: str, attn_cfg: AttentionConfig, train_cfg: TrainConfig,
         "train_seconds": train_seconds,
         "grad_norm_mean": mean(grad_norms),
         "grad_norm_std": pstdev(grad_norms),
+        "init_log_temps": log_temps,
         "state_dict": model.state_dict(),
         **speed,
     }

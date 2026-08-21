@@ -218,3 +218,38 @@ def test_config_validation():
         AttentionConfig(gate="nope")
     with pytest.raises(ValueError):
         AttentionConfig(score="transe", n_relations=1)
+
+
+# ------------------------------------------------- when energy collapses to dot
+def test_with_unit_norm_queries_and_keys_energy_attention_is_exactly_dot_attention():
+    """||q - k||^2 = 2 - 2 q.k  when both are unit norm.
+
+    So under QK-normalisation -- l2-normalising queries and keys, now standard
+    practice in large models (Henry et al. 2020; used in ViT-22B, Gemma 3,
+    Qwen 3) -- the energy view and the dot-product view are the *same function*
+    up to temperature.  Any benefit of the energy formulation therefore has to
+    come from the norm terms it keeps, not from the geometry of distance.
+    """
+    torch.manual_seed(0)
+    q = torch.nn.functional.normalize(torch.randn(2, 4, 16, 8), dim=-1)
+    k = torch.nn.functional.normalize(torch.randn(2, 4, 16, 8), dim=-1)
+    att = Attention(cfg(score="energy"))
+    energy_attn = torch.softmax(-att._energy(q, k) * 0.5, dim=-1)
+    dot_attn = torch.softmax(q @ k.transpose(-1, -2), dim=-1)
+    assert torch.allclose(energy_attn, dot_attn, atol=1e-5)
+
+
+def test_the_gap_between_energy_and_dot_is_exactly_the_key_norm_term():
+    """-||q-k||^2 = 2 q.k - ||q||^2 - ||k||^2, and ||q||^2 drops out of the row.
+
+    Subtracting the key-norm term from the dot scores reproduces the energy
+    attention exactly -- so 'energy vs dot' is precisely 'with or without a
+    penalty on large-norm memories', nothing more.
+    """
+    torch.manual_seed(0)
+    q, k = torch.randn(2, 4, 16, 8), torch.randn(2, 4, 16, 8)
+    att = Attention(cfg(score="energy"))
+    energy_attn = torch.softmax(-att._energy(q, k), dim=-1)
+    reconstructed = torch.softmax(2.0 * (q @ k.transpose(-1, -2))
+                                  - k.pow(2).sum(-1)[..., None, :], dim=-1)
+    assert torch.allclose(energy_attn, reconstructed, atol=1e-5)

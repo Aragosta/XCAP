@@ -45,7 +45,10 @@ def test_extra_parameters_are_only_the_declared_mechanism(name):
     extra_names = ("tau_bias", "tau_proj", "rel_select", "relations")
     declared = sum(p.numel() for n, p in other.named_parameters()
                    if any(e in n for e in extra_names))
-    assert other.n_params() - base.n_params() == declared
+    # tying W_Q = W_K *removes* one projection per layer instead of adding one
+    cfg = other.cfg.attn
+    saved = (cfg.d_model ** 2) * other.cfg.n_layers if cfg.tie_qk else 0
+    assert other.n_params() - base.n_params() == declared - saved
     assert declared / base.n_params() < 0.10, "the mechanism must stay a small overhead"
 
 

@@ -1,0 +1,473 @@
+{
+ "config": {
+  "dim": 64,
+  "seeds": 5,
+  "beta": 1.0,
+  "noise": 0.5,
+  "out": "/home/user/XCAP/EBT/results/memory.json"
+ },
+ "rows": [
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 8,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 8,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 8,
+   "kind": "sigmoid",
+   "correct": 0.625,
+   "euclid_correct": 0.5,
+   "exact_frac": 0.0,
+   "relative_error": 0.8258377194404602,
+   "norm_ratio": 0.3971579313278198
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 32,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 7.631893638587738e-09,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 32,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 32,
+   "kind": "sigmoid",
+   "correct": 0.81875,
+   "euclid_correct": 0.16249999999999998,
+   "exact_frac": 0.0,
+   "relative_error": 0.890706741809845,
+   "norm_ratio": 0.26283142566680906
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 128,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 2.1138526262731713e-09,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 128,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 128,
+   "kind": "sigmoid",
+   "correct": 0.9937499999999999,
+   "euclid_correct": 0.07343749999999999,
+   "exact_frac": 0.0,
+   "relative_error": 0.908534550666809,
+   "norm_ratio": 0.16347948908805848
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 512,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 0.999609375,
+   "relative_error": 2.7385759454290335e-05,
+   "norm_ratio": 0.9999945640563964
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 512,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 512,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "euclid_correct": 0.027343750000000003,
+   "exact_frac": 0.0,
+   "relative_error": 0.9118025422096252,
+   "norm_ratio": 0.11852793991565704
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 2048,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 0.999609375,
+   "relative_error": 2.6043286391086435e-05,
+   "norm_ratio": 0.9999924659729005
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 2048,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 2048,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "euclid_correct": 0.01181640625,
+   "exact_frac": 0.0,
+   "relative_error": 0.9126406908035279,
+   "norm_ratio": 0.10384649634361266
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.05,
+   "clusters": 4,
+   "kind": "softmax",
+   "correct": 0.2,
+   "exact_frac": 0.0,
+   "relative_error": 0.04753188937902451,
+   "sep": -0.41224839687347414,
+   "dist_to_cluster_mean": 1.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.05,
+   "clusters": 4,
+   "kind": "sparsemax",
+   "correct": 0.23125,
+   "exact_frac": 0.018750000000000003,
+   "relative_error": 0.05100664868950844,
+   "sep": -0.41224839687347414,
+   "dist_to_cluster_mean": 0.9
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.05,
+   "clusters": 4,
+   "kind": "sigmoid",
+   "correct": 0.07500000000000001,
+   "exact_frac": 0.0,
+   "relative_error": 0.7172286510467529,
+   "sep": -0.41224839687347414,
+   "dist_to_cluster_mean": 0.6125
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.15,
+   "clusters": 4,
+   "kind": "softmax",
+   "correct": 0.425,
+   "exact_frac": 0.00625,
+   "relative_error": 0.12160954475402833,
+   "sep": -0.25748400688171386,
+   "dist_to_cluster_mean": 0.8375000000000001
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.15,
+   "clusters": 4,
+   "kind": "sparsemax",
+   "correct": 0.43125,
+   "exact_frac": 0.21875,
+   "relative_error": 0.1174202412366867,
+   "sep": -0.25748400688171386,
+   "dist_to_cluster_mean": 0.59375
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.15,
+   "clusters": 4,
+   "kind": "sigmoid",
+   "correct": 0.09375,
+   "exact_frac": 0.0,
+   "relative_error": 0.7093286871910095,
+   "sep": -0.25748400688171386,
+   "dist_to_cluster_mean": 0.7562500000000001
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.35,
+   "clusters": 4,
+   "kind": "softmax",
+   "correct": 0.83125,
+   "exact_frac": 0.44999999999999996,
+   "relative_error": 0.09389577731490137,
+   "sep": 3.8402266025543215,
+   "dist_to_cluster_mean": 0.1875
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.35,
+   "clusters": 4,
+   "kind": "sparsemax",
+   "correct": 0.83125,
+   "exact_frac": 0.7875000000000001,
+   "relative_error": 0.08225051164627076,
+   "sep": 3.8402266025543215,
+   "dist_to_cluster_mean": 0.16875
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.35,
+   "clusters": 4,
+   "kind": "sigmoid",
+   "correct": 0.11875,
+   "exact_frac": 0.0,
+   "relative_error": 0.7143107891082763,
+   "sep": 3.8402266025543215,
+   "dist_to_cluster_mean": 0.9375
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.75,
+   "clusters": 4,
+   "kind": "softmax",
+   "correct": 0.9875,
+   "exact_frac": 0.98125,
+   "relative_error": 0.006065079435614962,
+   "sep": 26.514152145385744,
+   "dist_to_cluster_mean": 0.0125
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.75,
+   "clusters": 4,
+   "kind": "sparsemax",
+   "correct": 0.9937499999999999,
+   "exact_frac": 0.9875,
+   "relative_error": 0.0059223704040050505,
+   "sep": 26.514152145385744,
+   "dist_to_cluster_mean": 0.00625
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.75,
+   "clusters": 4,
+   "kind": "sigmoid",
+   "correct": 0.21875000000000003,
+   "exact_frac": 0.0,
+   "relative_error": 0.7737050175666809,
+   "sep": 26.514152145385744,
+   "dist_to_cluster_mean": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.1,
+   "kind": "softmax",
+   "correct": 0.8187499999999999,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.1,
+   "kind": "sparsemax",
+   "correct": 0.9125000000000001,
+   "exact_frac": 0.11875000000000001
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.1,
+   "kind": "sigmoid",
+   "correct": 0.32499999999999996,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.25,
+   "kind": "softmax",
+   "correct": 0.90625,
+   "exact_frac": 0.00625
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.25,
+   "kind": "sparsemax",
+   "correct": 0.91875,
+   "exact_frac": 0.7124999999999999
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.25,
+   "kind": "sigmoid",
+   "correct": 0.31875000000000003,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.5,
+   "kind": "softmax",
+   "correct": 0.91875,
+   "exact_frac": 0.225
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.5,
+   "kind": "sparsemax",
+   "correct": 0.91875,
+   "exact_frac": 0.8500000000000001
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.5,
+   "kind": "sigmoid",
+   "correct": 0.31875,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 1.0,
+   "kind": "softmax",
+   "correct": 0.91875,
+   "exact_frac": 0.675
+  },
+  {
+   "experiment": "beta",
+   "beta": 1.0,
+   "kind": "sparsemax",
+   "correct": 0.91875,
+   "exact_frac": 0.8937499999999999
+  },
+  {
+   "experiment": "beta",
+   "beta": 1.0,
+   "kind": "sigmoid",
+   "correct": 0.30624999999999997,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 2.0,
+   "kind": "softmax",
+   "correct": 0.91875,
+   "exact_frac": 0.8500000000000001
+  },
+  {
+   "experiment": "beta",
+   "beta": 2.0,
+   "kind": "sparsemax",
+   "correct": 0.91875,
+   "exact_frac": 0.91875
+  },
+  {
+   "experiment": "beta",
+   "beta": 2.0,
+   "kind": "sigmoid",
+   "correct": 0.30624999999999997,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 8.0,
+   "kind": "softmax",
+   "correct": 0.91875,
+   "exact_frac": 0.91875
+  },
+  {
+   "experiment": "beta",
+   "beta": 8.0,
+   "kind": "sparsemax",
+   "correct": 0.91875,
+   "exact_frac": 0.91875
+  },
+  {
+   "experiment": "beta",
+   "beta": 8.0,
+   "kind": "sigmoid",
+   "correct": 0.30624999999999997,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "iterate",
+   "kind": "softmax",
+   "acc_by_step": [
+    0.9812,
+    0.7188,
+    0.6125,
+    0.55,
+    0.525,
+    0.5
+   ],
+   "monotone_energy_descent": true
+  },
+  {
+   "experiment": "iterate",
+   "kind": "sparsemax",
+   "acc_by_step": [
+    0.9812,
+    0.7188,
+    0.6687,
+    0.65,
+    0.65,
+    0.65
+   ],
+   "monotone_energy_descent": true
+  },
+  {
+   "experiment": "iterate",
+   "kind": "sigmoid",
+   "acc_by_step": [
+    0.9812,
+    0.1063,
+    0.0813,
+    0.0563,
+    0.0437,
+    0.0312
+   ],
+   "monotone_energy_descent": true
+  }
+ ]
+}

@@ -1,0 +1,360 @@
+{
+ "config": {
+  "dim": 64,
+  "clusters": 8,
+  "per_cluster": 16,
+  "spread": 0.6,
+  "noise": 2.0,
+  "norm_lo": 0.5,
+  "norm_hi": 2.0,
+  "beta": 8.0,
+  "seeds": 5,
+  "out": "/home/user/XCAP/EBT/results/framework.json"
+ },
+ "rows": [
+  {
+   "experiment": "structure",
+   "sim": "dot",
+   "sep": "identity",
+   "acc": 0.10312500000000001
+  },
+  {
+   "experiment": "structure",
+   "sim": "dot",
+   "sep": "softmax",
+   "acc": 0.3375
+  },
+  {
+   "experiment": "structure",
+   "sim": "dot",
+   "sep": "sparsemax",
+   "acc": 0.3375
+  },
+  {
+   "experiment": "structure",
+   "sim": "dot",
+   "sep": "poly",
+   "acc": 0.3578125
+  },
+  {
+   "experiment": "structure",
+   "sim": "dot",
+   "sep": "max",
+   "acc": 0.3375
+  },
+  {
+   "experiment": "structure",
+   "sim": "cosine",
+   "sep": "identity",
+   "acc": 0.109375
+  },
+  {
+   "experiment": "structure",
+   "sim": "cosine",
+   "sep": "softmax",
+   "acc": 0.7593750000000001
+  },
+  {
+   "experiment": "structure",
+   "sim": "cosine",
+   "sep": "sparsemax",
+   "acc": 0.7593749999999999
+  },
+  {
+   "experiment": "structure",
+   "sim": "cosine",
+   "sep": "poly",
+   "acc": 0.1703125
+  },
+  {
+   "experiment": "structure",
+   "sim": "cosine",
+   "sep": "max",
+   "acc": 0.7578125
+  },
+  {
+   "experiment": "structure",
+   "sim": "euclidean",
+   "sep": "identity",
+   "acc": 0.115625
+  },
+  {
+   "experiment": "structure",
+   "sim": "euclidean",
+   "sep": "softmax",
+   "acc": 0.778125
+  },
+  {
+   "experiment": "structure",
+   "sim": "euclidean",
+   "sep": "sparsemax",
+   "acc": 0.8156249999999998
+  },
+  {
+   "experiment": "structure",
+   "sim": "euclidean",
+   "sep": "poly",
+   "acc": 0.071875
+  },
+  {
+   "experiment": "structure",
+   "sim": "euclidean",
+   "sep": "max",
+   "acc": 0.8140625000000001
+  },
+  {
+   "experiment": "structure",
+   "sim": "manhattan",
+   "sep": "identity",
+   "acc": 0.1234375
+  },
+  {
+   "experiment": "structure",
+   "sim": "manhattan",
+   "sep": "softmax",
+   "acc": 0.7234375
+  },
+  {
+   "experiment": "structure",
+   "sim": "manhattan",
+   "sep": "sparsemax",
+   "acc": 0.75625
+  },
+  {
+   "experiment": "structure",
+   "sim": "manhattan",
+   "sep": "poly",
+   "acc": 0.09375
+  },
+  {
+   "experiment": "structure",
+   "sim": "manhattan",
+   "sep": "max",
+   "acc": 0.7546875
+  },
+  {
+   "experiment": "compression",
+   "sim": "dot",
+   "budget": 128,
+   "ratio": 1.0,
+   "acc": 0.903125
+  },
+  {
+   "experiment": "compression",
+   "sim": "dot",
+   "budget": 64,
+   "ratio": 0.5,
+   "acc": 0.921875
+  },
+  {
+   "experiment": "compression",
+   "sim": "dot",
+   "budget": 32,
+   "ratio": 0.25,
+   "acc": 0.9171875
+  },
+  {
+   "experiment": "compression",
+   "sim": "dot",
+   "budget": 16,
+   "ratio": 0.125,
+   "acc": 0.896875
+  },
+  {
+   "experiment": "compression",
+   "sim": "dot",
+   "budget": 8,
+   "ratio": 0.0625,
+   "acc": 0.8125000000000001
+  },
+  {
+   "experiment": "compression",
+   "sim": "cosine",
+   "budget": 128,
+   "ratio": 1.0,
+   "acc": 0.953125
+  },
+  {
+   "experiment": "compression",
+   "sim": "cosine",
+   "budget": 64,
+   "ratio": 0.5,
+   "acc": 0.9562499999999999
+  },
+  {
+   "experiment": "compression",
+   "sim": "cosine",
+   "budget": 32,
+   "ratio": 0.25,
+   "acc": 0.9484375
+  },
+  {
+   "experiment": "compression",
+   "sim": "cosine",
+   "budget": 16,
+   "ratio": 0.125,
+   "acc": 0.946875
+  },
+  {
+   "experiment": "compression",
+   "sim": "cosine",
+   "budget": 8,
+   "ratio": 0.0625,
+   "acc": 0.8390625
+  },
+  {
+   "experiment": "compression",
+   "sim": "euclidean",
+   "budget": 128,
+   "ratio": 1.0,
+   "acc": 0.9546875
+  },
+  {
+   "experiment": "compression",
+   "sim": "euclidean",
+   "budget": 64,
+   "ratio": 0.5,
+   "acc": 0.95625
+  },
+  {
+   "experiment": "compression",
+   "sim": "euclidean",
+   "budget": 32,
+   "ratio": 0.25,
+   "acc": 0.9359375000000001
+  },
+  {
+   "experiment": "compression",
+   "sim": "euclidean",
+   "budget": 16,
+   "ratio": 0.125,
+   "acc": 0.934375
+  },
+  {
+   "experiment": "compression",
+   "sim": "euclidean",
+   "budget": 8,
+   "ratio": 0.0625,
+   "acc": 0.8484375
+  },
+  {
+   "experiment": "compression",
+   "sim": "manhattan",
+   "budget": 128,
+   "ratio": 1.0,
+   "acc": 0.9437499999999999
+  },
+  {
+   "experiment": "compression",
+   "sim": "manhattan",
+   "budget": 64,
+   "ratio": 0.5,
+   "acc": 0.9203125
+  },
+  {
+   "experiment": "compression",
+   "sim": "manhattan",
+   "budget": 32,
+   "ratio": 0.25,
+   "acc": 0.9031250000000001
+  },
+  {
+   "experiment": "compression",
+   "sim": "manhattan",
+   "budget": 16,
+   "ratio": 0.125,
+   "acc": 0.9046875000000001
+  },
+  {
+   "experiment": "compression",
+   "sim": "manhattan",
+   "budget": 8,
+   "ratio": 0.0625,
+   "acc": 0.8125
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "dot",
+   "sep": "softmax",
+   "seen": 0.9125000000000001,
+   "unseen": 0.9140625
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "dot",
+   "sep": "sparsemax",
+   "seen": 0.9109375000000001,
+   "unseen": 0.9125
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "dot",
+   "sep": "max",
+   "seen": 0.9109375000000001,
+   "unseen": 0.9109375000000001
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "cosine",
+   "sep": "softmax",
+   "seen": 0.9484374999999999,
+   "unseen": 0.9328124999999999
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "cosine",
+   "sep": "sparsemax",
+   "seen": 0.9500000000000001,
+   "unseen": 0.9328124999999999
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "cosine",
+   "sep": "max",
+   "seen": 0.9500000000000001,
+   "unseen": 0.9328124999999999
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "euclidean",
+   "sep": "softmax",
+   "seen": 0.9640624999999999,
+   "unseen": 0.9312500000000001
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "euclidean",
+   "sep": "sparsemax",
+   "seen": 0.9640625,
+   "unseen": 0.9296875000000001
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "euclidean",
+   "sep": "max",
+   "seen": 0.9640625,
+   "unseen": 0.9296875000000001
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "manhattan",
+   "sep": "softmax",
+   "seen": 0.94375,
+   "unseen": 0.9171875
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "manhattan",
+   "sep": "sparsemax",
+   "seen": 0.9390624999999999,
+   "unseen": 0.903125
+  },
+  {
+   "experiment": "generalisation",
+   "sim": "manhattan",
+   "sep": "max",
+   "seen": 0.9359375,
+   "unseen": 0.9015625
+  }
+ ]
+}

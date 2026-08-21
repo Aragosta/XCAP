@@ -8,8 +8,8 @@ import math
 import pytest
 import torch
 
-from ebt.hopfield import (energy, make_patterns, retrieval_accuracy, retrieve,
-                          separation, update)
+from ebt.hopfield import (argmin_energy, energy, energy_gap, make_patterns,
+                          retrieval_accuracy, retrieve, scores, separation, update)
 
 D = 64
 
@@ -86,7 +86,12 @@ def test_retrieval_error_shrinks_as_separation_grows():
 # ------------------------------------------------- the metastable failure
 def test_unseparated_patterns_collapse_to_their_cluster_mean():
     """Ramsauer et al.: with similar patterns the fixed point is a metastable
-    state near their mean.  This is retrieval failing by *averaging*."""
+    state near their mean.  This is retrieval failing by *averaging*.
+
+    Note this is a property of the **dot-product** update, which is what the
+    modern Hopfield network uses.  Scoring with the pairwise energy instead
+    removes the failure entirely -- see the tests below.
+    """
     clusters = 4
     X = make_patterns(32, D, g(), clusters=clusters, spread=0.05)
     idx = torch.arange(32) % clusters
@@ -173,3 +178,94 @@ def test_sigmoid_retrieves_the_direction_but_not_the_scale():
     assert r["correct"] > 0.9
     assert r["euclid_correct"] < 0.2
     assert r["norm_ratio"] < 0.5
+
+
+# ================= dot product vs the pairwise energy as the score ============
+# The modern Hopfield update scores memories with xi.x_j, not with -||xi-x_j||^2.
+# The two differ by -||x_j||^2/2, so they rank memories differently whenever the
+# memories have different norms -- and then the metastable "averaging" failure
+# above is really a norm-bias failure of the dot product, not a limit of
+# associative memory.
+
+def test_dot_and_energy_scores_differ_exactly_by_the_memory_norm():
+    X = make_patterns(8, D, g())
+    xi = torch.randn(4, D, generator=g(1))
+    dot = scores(xi, X, 1.0, "dot")
+    eng = scores(xi, X, 1.0, "energy")
+    # -1/2||xi-x||^2 = xi.x - 1/2||x||^2 - 1/2||xi||^2
+    ref = dot - 0.5 * X.pow(2).sum(-1)[None, :] - 0.5 * xi.pow(2).sum(-1)[:, None]
+    assert torch.allclose(eng, ref, atol=1e-3)
+
+
+def test_the_lowest_energy_memory_is_always_the_right_one():
+    """E(q,m) = 0 iff q = m, so the pairwise energy cannot be wrong about which
+    memory a noisy query came from -- whatever the separation."""
+    for spread in (0.05, 0.15, 0.35):
+        X = make_patterns(32, D, g(), clusters=4, spread=spread)
+        t = torch.arange(32)
+        q = X + 0.5 * spread * torch.randn(X.shape, generator=g(7))
+        assert (argmin_energy(q, X) == t).float().mean() == 1.0
+        assert (energy_gap(q, X, t) > 0).all()
+
+
+def test_energy_scoring_retrieves_where_dot_scoring_fails():
+    """The decisive comparison: same memories, same gate, same beta."""
+    X = make_patterns(32, D, g(), clusters=4, spread=0.05)
+    t = torch.arange(32)
+    q = X + 0.025 * torch.randn(X.shape, generator=g(8))
+    dot = retrieval_accuracy(q, X, t, 16.0, "softmax", 1, "dot")["correct"]
+    eng = retrieval_accuracy(q, X, t, 16.0, "softmax", 1, "energy")["correct"]
+    assert eng == 1.0
+    assert dot < 0.5
+
+
+def test_sharpening_rescues_energy_scoring_but_not_dot_scoring():
+    """If raising beta does not fix retrieval, the *score* is wrong, not the
+    temperature: an infinitely sharp gate returns argmax of whatever it ranks."""
+    X = make_patterns(32, D, g(), clusters=4, spread=0.05)
+    t = torch.arange(32)
+    q = X + 0.025 * torch.randn(X.shape, generator=g(8))
+    for score, expect in (("energy", True), ("dot", False)):
+        cold = retrieval_accuracy(q, X, t, 1.0, "softmax", 1, score)["correct"]
+        hot = retrieval_accuracy(q, X, t, 256.0, "softmax", 1, score)["correct"]
+        assert (hot > cold + 0.5) == expect, (score, cold, hot)
+
+
+def test_with_equal_norm_memories_the_two_scores_are_the_same_function():
+    """||q-k||^2 = 2 - 2 q.k on the unit sphere, so QK-normalisation collapses
+    the distinction -- which is why the difference never shows up in models
+    that already normalise queries and keys."""
+    X = torch.nn.functional.normalize(make_patterns(32, D, g(), clusters=4, spread=0.05), dim=-1)
+    t = torch.arange(32)
+    q = X + 0.025 * torch.randn(X.shape, generator=g(8))
+    for beta in (1.0, 16.0, 256.0):
+        dot = retrieval_accuracy(q, X, t, beta, "softmax", 1, "dot")
+        eng = retrieval_accuracy(q, X, t, beta, "softmax", 1, "energy")
+        assert dot["correct"] == eng["correct"]
+
+
+def test_energy_scoring_is_stable_under_iteration():
+    """With the dot product, iterating drifts into the metastable average; with
+    the energy it is a fixed point."""
+    X = make_patterns(32, D, g(), clusters=4, spread=0.35)
+    t = torch.arange(32)
+    q = X + 0.7 * torch.randn(X.shape, generator=g(9))
+    one = retrieval_accuracy(q, X, t, 16.0, "softmax", 1, "energy")["correct"]
+    five = retrieval_accuracy(q, X, t, 16.0, "softmax", 5, "energy")["correct"]
+    assert five >= one - 1e-6
+
+    dot_one = retrieval_accuracy(q, X, t, 1.0, "softmax", 1, "dot")["correct"]
+    dot_five = retrieval_accuracy(q, X, t, 1.0, "softmax", 5, "dot")["correct"]
+    assert dot_five < dot_one - 0.1
+
+
+def test_a_minimal_example_where_the_dot_product_picks_the_wrong_memory():
+    """Two memories, one near and one merely large.  The dot product prefers
+    the large one; the energy prefers the near one, which is the answer."""
+    near = torch.tensor([[1.0, 0.0]])
+    far_but_large = torch.tensor([[3.0, 0.0]])
+    X = torch.cat([near, far_but_large])
+    q = torch.tensor([[1.05, 0.0]])
+    assert scores(q, X, 1.0, "dot").argmax(-1).item() == 1, "dot picks the large memory"
+    assert scores(q, X, 1.0, "energy").argmax(-1).item() == 0, "energy picks the near one"
+    assert argmin_energy(q, X).item() == 0

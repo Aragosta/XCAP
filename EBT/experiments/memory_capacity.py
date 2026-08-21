@@ -40,7 +40,8 @@ def _query(X: Tensor, noise: float, g: torch.Generator):  # noqa: F821
     return X + noise * torch.randn(X.shape, generator=g), target
 
 
-def capacity(d: int, noise: float, beta: float, seeds: int, ms: list[int]) -> list[dict]:
+def capacity(d: int, noise: float, beta: float, seeds: int, ms: list[int],
+             score: str = "dot") -> list[dict]:
     rows = []
     for m in ms:
         for kind in KINDS:
@@ -50,7 +51,7 @@ def capacity(d: int, noise: float, beta: float, seeds: int, ms: list[int]) -> li
                 g = torch.Generator().manual_seed(s)
                 X = make_patterns(m, d, g)
                 q, t = _query(X, noise, g)
-                r = retrieval_accuracy(q, X, t, beta, kind, steps=1)
+                r = retrieval_accuracy(q, X, t, beta, kind, 1, score)
                 for k in acc:
                     acc[k] += r[k] / seeds
             rows.append({"experiment": "capacity", "d": d, "m": m, "kind": kind, **acc})
@@ -58,7 +59,7 @@ def capacity(d: int, noise: float, beta: float, seeds: int, ms: list[int]) -> li
 
 
 def metastable(d: int, m: int, clusters: int, spreads: list[float], beta: float,
-               seeds: int) -> list[dict]:
+               seeds: int, score: str = "dot") -> list[dict]:
     rows = []
     for spread in spreads:
         for kind in KINDS:
@@ -68,8 +69,8 @@ def metastable(d: int, m: int, clusters: int, spreads: list[float], beta: float,
                 g = torch.Generator().manual_seed(s)
                 X = make_patterns(m, d, g, clusters=clusters, spread=spread)
                 q, t = _query(X, spread * 0.5, g)
-                r = retrieval_accuracy(q, X, t, beta, kind, steps=1)
-                out, _ = retrieve(q, X, beta, kind, steps=1)
+                r = retrieval_accuracy(q, X, t, beta, kind, 1, score)
+                out, _ = retrieve(q, X, beta, kind, 1, score)
                 idx = torch.arange(m) % clusters
                 means = torch.stack([X[idx == c].mean(0) for c in range(clusters)])
                 # is the fixed point closer to the pattern or to its cluster mean?
@@ -84,7 +85,8 @@ def metastable(d: int, m: int, clusters: int, spreads: list[float], beta: float,
     return rows
 
 
-def beta_sweep(d: int, m: int, noise: float, betas: list[float], seeds: int) -> list[dict]:
+def beta_sweep(d: int, m: int, noise: float, betas: list[float], seeds: int,
+               score: str = "dot") -> list[dict]:
     rows = []
     for beta in betas:
         for kind in KINDS:
@@ -93,7 +95,7 @@ def beta_sweep(d: int, m: int, noise: float, betas: list[float], seeds: int) -> 
                 g = torch.Generator().manual_seed(s)
                 X = make_patterns(m, d, g, clusters=m // 4, spread=0.35)
                 q, t = _query(X, noise, g)
-                r = retrieval_accuracy(q, X, t, beta, kind, steps=1)
+                r = retrieval_accuracy(q, X, t, beta, kind, 1, score)
                 for k in acc:
                     acc[k] += r[k] / seeds
             rows.append({"experiment": "beta", "beta": beta, "kind": kind, **acc})
@@ -101,7 +103,7 @@ def beta_sweep(d: int, m: int, noise: float, betas: list[float], seeds: int) -> 
 
 
 def iterate(d: int, m: int, clusters: int, spread: float, beta: float, steps: int,
-            seeds: int, noise: float) -> list[dict]:
+            seeds: int, noise: float, score: str = "dot") -> list[dict]:
     rows = []
     for kind in KINDS:
         per_step, descent_ok = [0.0] * (steps + 1), True
@@ -110,13 +112,17 @@ def iterate(d: int, m: int, clusters: int, spread: float, beta: float, steps: in
             X = make_patterns(m, d, g, clusters=clusters, spread=spread)
             q, t = _query(X, noise, g)
             for step in range(steps + 1):
-                r = retrieval_accuracy(q, X, t, beta, kind, steps=step)
+                r = retrieval_accuracy(q, X, t, beta, kind, step, score)
                 per_step[step] += r["correct"] / seeds
-            if kind != "sigmoid":
-                _, traj = retrieve(q, X, beta, kind, steps=steps)
+            # the Fenchel-Young energy in ebt.hopfield matches the dot-product
+            # update; with energy scoring there is no trajectory to check here
+            _, traj = retrieve(q, X, beta, kind, steps, score)
+            if len(traj) > 1:
                 e = torch.stack(traj)
                 tol = 1e-5 * e.abs().max()      # float32 round-off, not a violation
                 descent_ok &= bool((e[1:] <= e[:-1] + tol).all())
+            else:
+                descent_ok = None
         rows.append({"experiment": "iterate", "kind": kind,
                      "acc_by_step": [round(v, 4) for v in per_step],
                      "monotone_energy_descent": descent_ok})
@@ -129,13 +135,14 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, default=5)
     ap.add_argument("--beta", type=float, default=1.0)
     ap.add_argument("--noise", type=float, default=0.5)
+    ap.add_argument("--score", default="dot", choices=["dot", "energy"])
     ap.add_argument("--out", default=str(ROOT / "results" / "memory.json"))
     a = ap.parse_args()
 
     rows = []
     print(f"=== capacity (d={a.dim}, noise={a.noise}, beta={a.beta}, "
           f"{a.seeds} seeds): fraction retrieved to the right pattern")
-    rows += capacity(a.dim, a.noise, a.beta, a.seeds, [8, 32, 128, 512, 2048])
+    rows += capacity(a.dim, a.noise, a.beta, a.seeds, [8, 32, 128, 512, 2048], a.score)
     ms = sorted({r["m"] for r in rows if r["experiment"] == "capacity"})
     print("   (cosine-nearest: scale-invariant, so gates that do not normalise are judged fairly)")
     print("kind".ljust(10) + "".join(f"M={m}".rjust(12) for m in ms))
@@ -150,7 +157,7 @@ def main() -> None:
     print(f"\n=== metastable: patterns in 4 tight clusters, spread controls separation")
     print("   'avg' = fraction of queries whose fixed point is closer to the CLUSTER MEAN")
     print("   than to the pattern itself -- the failure the theory predicts for softmax")
-    meta = metastable(a.dim, 32, 4, [0.05, 0.15, 0.35, 0.75], a.beta, a.seeds)
+    meta = metastable(a.dim, 32, 4, [0.05, 0.15, 0.35, 0.75], a.beta, a.seeds, a.score)
     rows += meta
     spreads = sorted({r["spread"] for r in meta})
     print("kind".ljust(10) + "".join(f"spread={s}".rjust(16) for s in spreads))
@@ -162,7 +169,7 @@ def main() -> None:
         print(line)
 
     print(f"\n=== beta sweep (clustered patterns, one update step)")
-    bs = beta_sweep(a.dim, 32, 0.2, [0.1, 0.25, 0.5, 1.0, 2.0, 8.0], a.seeds)
+    bs = beta_sweep(a.dim, 32, 0.2, [0.1, 0.25, 0.5, 1.0, 2.0, 8.0], a.seeds, a.score)
     rows += bs
     betas = sorted({r["beta"] for r in bs})
     print("kind".ljust(10) + "".join(f"b={b}".rjust(10) for b in betas))
@@ -174,7 +181,7 @@ def main() -> None:
         print(line)
 
     print(f"\n=== iterating the update (Energy Transformer's recurrent scheme)")
-    it = iterate(a.dim, 32, 4, 0.35, a.beta, 5, a.seeds, noise=0.7)
+    it = iterate(a.dim, 32, 4, 0.35, a.beta, 5, a.seeds, 0.7, a.score)
     rows += it
     for r in it:
         print(f"{r['kind']:10s} acc by step {r['acc_by_step']}   "

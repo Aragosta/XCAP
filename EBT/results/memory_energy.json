@@ -1,0 +1,474 @@
+{
+ "config": {
+  "dim": 64,
+  "seeds": 5,
+  "beta": 16.0,
+  "noise": 0.5,
+  "score": "energy",
+  "out": "results/memory_energy.json"
+ },
+ "rows": [
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 8,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 8,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 8,
+   "kind": "sigmoid",
+   "correct": 0.15,
+   "euclid_correct": 0.125,
+   "exact_frac": 0.0,
+   "relative_error": 1.0,
+   "norm_ratio": 0.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 32,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 32,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 32,
+   "kind": "sigmoid",
+   "correct": 0.05,
+   "euclid_correct": 0.03125,
+   "exact_frac": 0.0,
+   "relative_error": 1.0,
+   "norm_ratio": 0.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 128,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 128,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 128,
+   "kind": "sigmoid",
+   "correct": 0.0296875,
+   "euclid_correct": 0.0078125,
+   "exact_frac": 0.0,
+   "relative_error": 1.0,
+   "norm_ratio": 0.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 512,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 512,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 512,
+   "kind": "sigmoid",
+   "correct": 0.03203125,
+   "euclid_correct": 0.001953125,
+   "exact_frac": 0.0,
+   "relative_error": 1.0,
+   "norm_ratio": 0.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 2048,
+   "kind": "softmax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 2048,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "euclid_correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "norm_ratio": 1.0
+  },
+  {
+   "experiment": "capacity",
+   "d": 64,
+   "m": 2048,
+   "kind": "sigmoid",
+   "correct": 0.03173828125,
+   "euclid_correct": 0.00048828125,
+   "exact_frac": 0.0,
+   "relative_error": 1.0,
+   "norm_ratio": 0.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.05,
+   "clusters": 4,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 0.0,
+   "relative_error": 0.018897164240479467,
+   "sep": -0.41224839687347414,
+   "dist_to_cluster_mean": 0.1
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.05,
+   "clusters": 4,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "sep": -0.41224839687347414,
+   "dist_to_cluster_mean": 0.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.05,
+   "clusters": 4,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "exact_frac": 0.0,
+   "relative_error": 0.5529039978981019,
+   "sep": -0.41224839687347414,
+   "dist_to_cluster_mean": 0.59375
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.15,
+   "clusters": 4,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 1.5604605252406145e-07,
+   "sep": -0.25748400688171386,
+   "dist_to_cluster_mean": 0.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.15,
+   "clusters": 4,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "sep": -0.25748400688171386,
+   "dist_to_cluster_mean": 0.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.15,
+   "clusters": 4,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "exact_frac": 0.0,
+   "relative_error": 0.9412774801254272,
+   "sep": -0.25748400688171386,
+   "dist_to_cluster_mean": 0.6812499999999999
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.35,
+   "clusters": 4,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "sep": 3.8402266025543215,
+   "dist_to_cluster_mean": 0.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.35,
+   "clusters": 4,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "sep": 3.8402266025543215,
+   "dist_to_cluster_mean": 0.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.35,
+   "clusters": 4,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "exact_frac": 0.0,
+   "relative_error": 0.9999970912933351,
+   "sep": 3.8402266025543215,
+   "dist_to_cluster_mean": 0.9
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.75,
+   "clusters": 4,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "sep": 26.514152145385744,
+   "dist_to_cluster_mean": 0.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.75,
+   "clusters": 4,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0,
+   "relative_error": 0.0,
+   "sep": 26.514152145385744,
+   "dist_to_cluster_mean": 0.0
+  },
+  {
+   "experiment": "metastable",
+   "spread": 0.75,
+   "clusters": 4,
+   "kind": "sigmoid",
+   "correct": 0.9125,
+   "exact_frac": 0.0,
+   "relative_error": 1.0,
+   "sep": 26.514152145385744,
+   "dist_to_cluster_mean": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.1,
+   "kind": "softmax",
+   "correct": 0.9875,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.1,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 0.03125
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.1,
+   "kind": "sigmoid",
+   "correct": 0.825,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.25,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.25,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.25,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.5,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 0.05
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.5,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 0.5,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 1.0,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 1.0,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 1.0,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 2.0,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 2.0,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 2.0,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 8.0,
+   "kind": "softmax",
+   "correct": 1.0,
+   "exact_frac": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 8.0,
+   "kind": "sparsemax",
+   "correct": 1.0,
+   "exact_frac": 1.0
+  },
+  {
+   "experiment": "beta",
+   "beta": 8.0,
+   "kind": "sigmoid",
+   "correct": 1.0,
+   "exact_frac": 0.0
+  },
+  {
+   "experiment": "iterate",
+   "kind": "softmax",
+   "acc_by_step": [
+    0.9812,
+    0.9812,
+    0.9812,
+    0.9812,
+    0.9812,
+    0.9812
+   ],
+   "monotone_energy_descent": null
+  },
+  {
+   "experiment": "iterate",
+   "kind": "sparsemax",
+   "acc_by_step": [
+    0.9812,
+    0.9812,
+    0.9812,
+    0.9812,
+    0.9812,
+    0.9812
+   ],
+   "monotone_energy_descent": null
+  },
+  {
+   "experiment": "iterate",
+   "kind": "sigmoid",
+   "acc_by_step": [
+    0.9812,
+    0.0312,
+    0.0312,
+    0.0312,
+    0.0312,
+    0.0312
+   ],
+   "monotone_energy_descent": null
+  }
+ ]
+}

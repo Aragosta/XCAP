@@ -65,9 +65,28 @@ def _probs(z: Tensor, kind: str) -> Tensor:
     raise ValueError(f"unknown kind {kind!r}")
 
 
-def update(xi: Tensor, X: Tensor, beta: float = 1.0, kind: str = "softmax") -> Tensor:
+def scores(xi: Tensor, X: Tensor, beta: float = 1.0, score: str = "dot") -> Tensor:
+    """Similarity scores for the update.
+
+    "dot"    beta * xi.x_j          -- what the modern Hopfield update uses
+    "energy" -beta/2 * ||xi-x_j||^2 -- the pairwise energy itself
+
+    They differ by -beta/2 ||x_j||^2 (the ||xi||^2 term is constant within a
+    row), so they agree only when all memories have the same norm.  When they
+    do not, argmax of the dot product is not argmin of the energy, and the two
+    retrieve *different* memories.
+    """
+    if score == "dot":
+        return beta * (xi @ X.T)
+    if score == "energy":
+        return -0.5 * beta * torch.cdist(xi, X).pow(2)
+    raise ValueError(f"unknown score {score!r}")
+
+
+def update(xi: Tensor, X: Tensor, beta: float = 1.0, kind: str = "softmax",
+           score: str = "dot") -> Tensor:
     """One associative-memory step.  xi: [B,d], X: [M,d] -> [B,d]."""
-    p = _probs(beta * (xi @ X.T), kind)
+    p = _probs(scores(xi, X, beta, score), kind)
     if kind == "sigmoid":
         return (p @ X) / (1.0 + p.sum(-1, keepdim=True))
     return p @ X
@@ -95,14 +114,19 @@ def energy(xi: Tensor, X: Tensor, beta: float = 1.0, kind: str = "softmax") -> T
 
 
 def retrieve(xi: Tensor, X: Tensor, beta: float = 1.0, kind: str = "softmax",
-             steps: int = 1) -> tuple[Tensor, list[Tensor]]:
-    """Iterate the update.  Returns the final state and the energy trajectory."""
+             steps: int = 1, score: str = "dot") -> tuple[Tensor, list[Tensor]]:
+    """Iterate the update.  Returns the final state and the energy trajectory.
+
+    The energy trajectory is only reported for the dot-product score, whose
+    Fenchel-Young energy is the one implemented in :func:`energy`.
+    """
     traj = []
-    if kind != "sigmoid":
+    track = kind != "sigmoid" and score == "dot"
+    if track:
         traj.append(energy(xi, X, beta, kind))
     for _ in range(steps):
-        xi = update(xi, X, beta, kind)
-        if kind != "sigmoid":
+        xi = update(xi, X, beta, kind, score)
+        if track:
             traj.append(energy(xi, X, beta, kind))
     return xi, traj
 
@@ -117,9 +141,10 @@ def separation(X: Tensor) -> Tensor:
 
 
 def retrieval_accuracy(xi: Tensor, X: Tensor, target: Tensor, beta: float = 1.0,
-                       kind: str = "softmax", steps: int = 1) -> dict[str, float]:
+                       kind: str = "softmax", steps: int = 1,
+                       score: str = "dot") -> dict[str, float]:
     """Fraction of queries whose retrieved state lands nearest the right pattern."""
-    out, _ = retrieve(xi, X, beta, kind, steps)
+    out, _ = retrieve(xi, X, beta, kind, steps, score)
     exact_err = (out - X[target]).norm(dim=-1) / X[target].norm(dim=-1).clamp(min=1e-9)
     # Cosine-nearest is the primary measure and Euclidean-nearest is reported
     # beside it, because gates that do not normalise (sigmoid) return the right
@@ -149,3 +174,23 @@ def make_patterns(n: int, d: int, generator: torch.Generator,
     centres = torch.randn(clusters, d, generator=generator)
     idx = torch.arange(n) % clusters
     return centres[idx] + spread * torch.randn(n, d, generator=generator)
+
+
+def argmin_energy(xi: Tensor, X: Tensor) -> Tensor:
+    """Hard retrieval: the memory of lowest *pairwise* energy E(q,m)=||q-m||^2.
+
+    This is the readout the energy definition implies directly -- zero energy
+    means identity, so the lowest-energy memory is the best match.  It is NOT
+    what attention does: attention returns a convex combination sum_j p_j m_j.
+    Comparing the two separates a failure of the energy landscape from a
+    failure of the averaging readout.
+    """
+    return torch.cdist(xi, X).argmin(-1)
+
+
+def energy_gap(xi: Tensor, X: Tensor, target: Tensor) -> Tensor:
+    """E(q, m_second_best) - E(q, m_target): how much the right memory wins by."""
+    e = torch.cdist(xi, X).pow(2)
+    correct = e.gather(1, target[:, None]).squeeze(1)
+    e = e.scatter(1, target[:, None], float("inf"))
+    return e.min(-1).values - correct

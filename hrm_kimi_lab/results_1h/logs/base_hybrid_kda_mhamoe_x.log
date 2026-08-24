@@ -2,3 +2,7 @@
 [base_hybrid_kda_mhamoe_x] step     0 loss 4.6974 bp 0 2s
 [base_hybrid_kda_mhamoe_x] step    50 VAL bpc 3.1660
 [base_hybrid_kda_mhamoe_x] step    50 loss 2.0452 bp 0 33s
+[base_hybrid_kda_mhamoe_x] step   100 VAL bpc 2.8770
+[base_hybrid_kda_mhamoe_x] step   100 loss 1.8182 bp 0 66s
+[base_hybrid_kda_mhamoe_x] step   150 VAL bpc 2.7804
+[base_hybrid_kda_mhamoe_x] step   150 loss 1.6926 bp 0 95s

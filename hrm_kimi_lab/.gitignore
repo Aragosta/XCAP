@@ -1,0 +1,3 @@
+results/*.pt
+__pycache__/
+*.pyc

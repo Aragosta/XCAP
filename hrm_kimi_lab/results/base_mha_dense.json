@@ -1,0 +1,129 @@
+{
+  "variant": "base_mha_dense",
+  "config": {
+    "name": "base_mha_dense",
+    "kind": "plain",
+    "mixer_h": "mha",
+    "ffn_h": "dense",
+    "mixer_l": "mha",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "note": "Plain 4-layer transformer, HRM-Text blocks (softmax MHA + SwiGLU)."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 12,
+  "steps": 700,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 884992,
+  "routed_expert_params": 0,
+  "active_params": 884992,
+  "final_train_loss": 1.4890642166137695,
+  "val_loss": 1.593716913461685,
+  "val_bpc": 2.2992474876320386,
+  "val_ppl": 4.922009654477133,
+  "train_time_s": 121.3,
+  "eval_time_s": 1.0,
+  "tokens_per_s": 17730.0,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.733473777770996,
+      "bp_steps": 0,
+      "elapsed_s": 0.2
+    },
+    {
+      "step": 50,
+      "train_loss": 2.396545171737671,
+      "bp_steps": 0,
+      "elapsed_s": 9.3
+    },
+    {
+      "step": 100,
+      "train_loss": 2.125000476837158,
+      "bp_steps": 0,
+      "elapsed_s": 18.0
+    },
+    {
+      "step": 150,
+      "train_loss": 1.9682060480117798,
+      "bp_steps": 0,
+      "elapsed_s": 26.7
+    },
+    {
+      "step": 200,
+      "train_loss": 1.7483094930648804,
+      "bp_steps": 0,
+      "elapsed_s": 35.1
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7085161209106445,
+      "bp_steps": 0,
+      "elapsed_s": 43.6
+    },
+    {
+      "step": 300,
+      "train_loss": 1.6772351264953613,
+      "bp_steps": 0,
+      "elapsed_s": 52.2
+    },
+    {
+      "step": 350,
+      "train_loss": 1.5848784446716309,
+      "bp_steps": 0,
+      "elapsed_s": 60.6
+    },
+    {
+      "step": 400,
+      "train_loss": 1.4998103380203247,
+      "bp_steps": 0,
+      "elapsed_s": 68.9
+    },
+    {
+      "step": 450,
+      "train_loss": 1.5371989011764526,
+      "bp_steps": 0,
+      "elapsed_s": 78.3
+    },
+    {
+      "step": 500,
+      "train_loss": 1.4638299942016602,
+      "bp_steps": 0,
+      "elapsed_s": 86.6
+    },
+    {
+      "step": 550,
+      "train_loss": 1.4816874265670776,
+      "bp_steps": 0,
+      "elapsed_s": 95.8
+    },
+    {
+      "step": 600,
+      "train_loss": 1.4261835813522339,
+      "bp_steps": 0,
+      "elapsed_s": 104.7
+    },
+    {
+      "step": 650,
+      "train_loss": 1.502357006072998,
+      "bp_steps": 0,
+      "elapsed_s": 113.0
+    },
+    {
+      "step": 699,
+      "train_loss": 1.4890642166137695,
+      "bp_steps": 0,
+      "elapsed_s": 121.3
+    }
+  ],
+  "sample": "KING RICHARD:\nThou makes here not med, and that you will strenMy\npour your name are hear of blessel such one man\nAnd of the way of all this discer none hands\nHow speak one an't his heads, the contrike.\n\nFRIAR LAURE"
+}

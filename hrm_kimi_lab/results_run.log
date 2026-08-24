@@ -1,2 +1,4 @@
 launch base_mha_dense
 launch base_kda_dense
+done   base_mha_dense rc=0 (130s elapsed)
+launch base_mha_moe

@@ -43,6 +43,28 @@ _V = [
             H_cycles=5, L_cycles=2, bp_min_steps=2, bp_max_steps=5,
             note="#4b All-linear 5-loop HRM: isolates the loop count from the mixer choice."),
 
+    # --- which state wants which mixer? (2 cycles, matched to the peers above) --
+    Variant("hrm_hybrid_kda_mha", "hrm", mixer_h="mha", ffn_h="dense", mixer_l="kda", ffn_l="dense",
+            H_cycles=2, L_cycles=2,
+            note="Hybrid at 2 cycles: fast(L)=Kimi linear, slow(H)=MHA. Direct peer of "
+                 "hrm_mha_dense and hrm_kda_dense -- isolates the hybrid from the loop count."),
+    Variant("hrm_hybrid_mha_kda", "hrm", mixer_h="kda", ffn_h="dense", mixer_l="mha", ffn_l="dense",
+            H_cycles=2, L_cycles=2,
+            note="Mirror control: fast(L)=MHA, slow(H)=Kimi linear. Tests whether the "
+                 "assignment of mixer to state matters or only the mixture."),
+
+    # --- trained loop-count ladder for the hybrid (fast=KDA, slow=MHA) ------
+    # Same architecture, only H_cycles changes: 1 (no outer recurrence at all,
+    # the degenerate control) -> 2 -> 3 -> 5. hrm_hybrid_kda_mha is the H=2 rung
+    # and hrm_loop5_kda_mha the H=5 rung.
+    Variant("hrm_loop1_kda_mha", "hrm", mixer_h="mha", ffn_h="dense", mixer_l="kda", ffn_l="dense",
+            H_cycles=1, L_cycles=2, bp_min_steps=2, bp_max_steps=3,
+            note="Loop ladder H=1: a single HRM pass, i.e. no outer recurrence. Control for "
+                 "whether the looping does anything at all."),
+    Variant("hrm_loop3_kda_mha", "hrm", mixer_h="mha", ffn_h="dense", mixer_l="kda", ffn_l="dense",
+            H_cycles=3, L_cycles=2, bp_min_steps=2, bp_max_steps=4,
+            note="Loop ladder H=3: fast(L)=Kimi linear, slow(H)=MHA."),
+
     # --- confound controls: the short causal conv ---------------------------
     # KDA carries a kernel-4 causal conv on q/k/v that HRM-Text's MHA does not.
     # These two isolate it: take it away from KDA, and give it to MHA.

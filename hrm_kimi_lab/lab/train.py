@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from lab.blocks import BlockConfig
+from lab.blocks import BlockConfig, MoEFFN
 from lab.data import CharData
 from lab.model import LM, build
 from lab.variants import VARIANTS
@@ -19,6 +19,10 @@ def count_params(model: nn.Module, moe_top_k_ratio: float) -> dict:
     )
     active = total - routed + routed * moe_top_k_ratio
     return {"total_params": total, "routed_expert_params": routed, "active_params": int(active)}
+
+
+def moe_modules(model: nn.Module):
+    return [m.moe for m in model.modules() if isinstance(m, MoEFFN)]
 
 
 @torch.no_grad()
@@ -67,17 +71,24 @@ def run(variant_name: str, steps: int, batch_size: int, seq_len: int, hidden: in
         return lr * (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * p)))  # cosine decay to 10%
     g = torch.Generator().manual_seed(seed)
 
+    moes = moe_modules(model)
     history, t0 = [], time.time()
     for step in range(steps):
         for grp in opt.param_groups:
             grp["lr"] = lr_at(step)
         bp = model.core.bp_steps_for(step, steps)
         x, y = data.batch("train", batch_size, seq_len, g)
+        # One routing-bias window per optimizer step, regardless of how many times
+        # the recurrence calls each MoE.
+        for moe in moes:
+            moe.begin_balance_accumulation()
         loss = model.loss(x, y, bp_steps=bp)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
         opt.zero_grad(set_to_none=True)
+        for moe in moes:
+            moe.finalize_and_commit_balance()
         if step % log_every == 0 or step == steps - 1:
             entry = {"step": step, "train_loss": float(loss.detach()), "bp_steps": bp,
                      "elapsed_s": round(time.time() - t0, 1)}

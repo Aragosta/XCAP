@@ -99,8 +99,14 @@ class MoEFFN(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        # Quantile-balancing routing-bias updates are training-only (upstream contract).
-        return self.moe(x, update_routing_bias=self.training)
+        # NEVER commit a routing-bias update per call: inside a weight-shared HRM
+        # loop this module is invoked once per cycle, so per-call commits mutate the
+        # routing rule *between cycles of the same forward pass*, and the number of
+        # mutations scales with the loop count. The trainer instead opens one
+        # accumulation window per optimizer step (begin_balance_accumulation) and
+        # commits once (finalize_and_commit_balance), which is upstream's own API
+        # for exactly this situation.
+        return self.moe(x, update_routing_bias=False)
 
 
 class Block(nn.Module):

@@ -1,4 +1,4 @@
-results/*.pt
+results*/*.pt
 __pycache__/
 *.pyc
 results/logs/

@@ -1,0 +1,166 @@
+{
+  "variant": "base_hybrid_kda_mhamoe_x",
+  "config": {
+    "name": "base_hybrid_kda_mhamoe_x",
+    "kind": "plain",
+    "mixer_h": "mha",
+    "ffn_h": "dense",
+    "mixer_l": "mha",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [
+      "kda:moe",
+      "kda:moe",
+      "kda:moe",
+      "mha:moe"
+    ],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "cfg_overrides": {},
+    "note": "No recurrence: Kimi's 3:1 linear/full-attention stack, MoE throughout. The reference an HRM module has to beat."
+  },
+  "hidden_size": 96,
+  "num_heads": 4,
+  "seq_len": 192,
+  "batch_size": 8,
+  "steps": 650,
+  "lr": 0.003,
+  "seed": 1,
+  "total_params": 1730508,
+  "routed_expert_params": 1179648,
+  "active_params": 845772,
+  "block_applications": 4,
+  "bp_steps_final": 0,
+  "grad_coverage": 1.0,
+  "unique_blocks": 4,
+  "final_train_loss": 1.503055453300476,
+  "val_loss": 1.6214095294475555,
+  "val_bpc": 2.339199487384096,
+  "val_ppl": 5.060217818197881,
+  "train_time_s": 405.7,
+  "eval_time_s": 3.2,
+  "tokens_per_s": 2461.0,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.7212815284729,
+      "bp_steps": 0,
+      "elapsed_s": 1.4,
+      "val_loss": 4.653232097625732,
+      "val_bpc": 6.713194871349994
+    },
+    {
+      "step": 50,
+      "train_loss": 2.101621389389038,
+      "bp_steps": 0,
+      "elapsed_s": 34.0,
+      "val_loss": 2.1824551224708557,
+      "val_bpc": 3.148617182151419
+    },
+    {
+      "step": 100,
+      "train_loss": 1.855794906616211,
+      "bp_steps": 0,
+      "elapsed_s": 66.7,
+      "val_loss": 2.0335646271705627,
+      "val_bpc": 2.9338136029461848
+    },
+    {
+      "step": 150,
+      "train_loss": 1.8320378065109253,
+      "bp_steps": 0,
+      "elapsed_s": 98.5,
+      "val_loss": 1.9520151317119598,
+      "val_bpc": 2.8161625502610614
+    },
+    {
+      "step": 200,
+      "train_loss": 1.7021905183792114,
+      "bp_steps": 0,
+      "elapsed_s": 130.1,
+      "val_loss": 1.8968546092510223,
+      "val_bpc": 2.7365827380538224
+    },
+    {
+      "step": 250,
+      "train_loss": 1.6689625978469849,
+      "bp_steps": 0,
+      "elapsed_s": 160.5,
+      "val_loss": 1.8414761573076248,
+      "val_bpc": 2.6566885200629753
+    },
+    {
+      "step": 300,
+      "train_loss": 1.5956664085388184,
+      "bp_steps": 0,
+      "elapsed_s": 190.2,
+      "val_loss": 1.8234182596206665,
+      "val_bpc": 2.63063648062112
+    },
+    {
+      "step": 350,
+      "train_loss": 1.640538215637207,
+      "bp_steps": 0,
+      "elapsed_s": 220.8,
+      "val_loss": 1.7986456006765366,
+      "val_bpc": 2.59489708841279
+    },
+    {
+      "step": 400,
+      "train_loss": 1.5801700353622437,
+      "bp_steps": 0,
+      "elapsed_s": 252.0,
+      "val_loss": 1.7665195614099503,
+      "val_bpc": 2.548549010879482
+    },
+    {
+      "step": 450,
+      "train_loss": 1.5041290521621704,
+      "bp_steps": 0,
+      "elapsed_s": 283.6,
+      "val_loss": 1.7390371263027191,
+      "val_bpc": 2.508900238038727
+    },
+    {
+      "step": 500,
+      "train_loss": 1.5257434844970703,
+      "bp_steps": 0,
+      "elapsed_s": 314.1,
+      "val_loss": 1.719995990395546,
+      "val_bpc": 2.4814296856925555
+    },
+    {
+      "step": 550,
+      "train_loss": 1.4965133666992188,
+      "bp_steps": 0,
+      "elapsed_s": 344.4,
+      "val_loss": 1.7016763240098953,
+      "val_bpc": 2.454999993847237
+    },
+    {
+      "step": 600,
+      "train_loss": 1.444034218788147,
+      "bp_steps": 0,
+      "elapsed_s": 374.8,
+      "val_loss": 1.6795026063919067,
+      "val_bpc": 2.4230100814016926
+    },
+    {
+      "step": 649,
+      "train_loss": 1.503055453300476,
+      "bp_steps": 0,
+      "elapsed_s": 404.5,
+      "val_loss": 1.6741457283496857,
+      "val_bpc": 2.415281740015533
+    }
+  ],
+  "sample": "KING RICHARD:\nThere his kind self it Hath ears by your tree,\nAnd of her hourty here his death beheld!\nThese is stants, your wake excellent;\nAnd true nemembers, the worth for me I mean,\nBy the contrance the struck a"
+}

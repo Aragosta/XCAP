@@ -1,0 +1,161 @@
+{
+  "variant": "hrm_hybrid_kda_mhamoe_fullbp",
+  "config": {
+    "name": "hrm_hybrid_kda_mhamoe_fullbp",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "kda",
+    "ffn_l": "moe",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 6,
+    "bp_max_steps": 6,
+    "cfg_overrides": {},
+    "note": "HRM module, fast(L)=Kimi linear, slow(H)=MHA, MoE in both, full gradients."
+  },
+  "hidden_size": 96,
+  "num_heads": 4,
+  "seq_len": 192,
+  "batch_size": 8,
+  "steps": 650,
+  "lr": 0.003,
+  "seed": 1,
+  "total_params": 868324,
+  "routed_expert_params": 589824,
+  "active_params": 425956,
+  "block_applications": 6,
+  "bp_steps_final": 6,
+  "grad_coverage": 1.0,
+  "unique_blocks": 2,
+  "final_train_loss": 1.5490940809249878,
+  "val_loss": 1.6533671617507935,
+  "val_bpc": 2.3853046050265303,
+  "val_ppl": 5.224542121440714,
+  "train_time_s": 593.1,
+  "eval_time_s": 4.7,
+  "tokens_per_s": 1683.5,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.652918815612793,
+      "bp_steps": 6,
+      "elapsed_s": 2.7,
+      "val_loss": 4.5476638078689575,
+      "val_bpc": 6.560892023242765
+    },
+    {
+      "step": 50,
+      "train_loss": 2.1649086475372314,
+      "bp_steps": 6,
+      "elapsed_s": 67.5,
+      "val_loss": 2.241750180721283,
+      "val_bpc": 3.2341618686385325
+    },
+    {
+      "step": 100,
+      "train_loss": 1.9074621200561523,
+      "bp_steps": 6,
+      "elapsed_s": 113.5,
+      "val_loss": 2.076274558901787,
+      "val_bpc": 2.995431009651528
+    },
+    {
+      "step": 150,
+      "train_loss": 1.8613758087158203,
+      "bp_steps": 6,
+      "elapsed_s": 159.7,
+      "val_loss": 1.9900536388158798,
+      "val_bpc": 2.871040515822706
+    },
+    {
+      "step": 200,
+      "train_loss": 1.7570595741271973,
+      "bp_steps": 6,
+      "elapsed_s": 206.9,
+      "val_loss": 1.9321304112672806,
+      "val_bpc": 2.7874749626860593
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7531018257141113,
+      "bp_steps": 6,
+      "elapsed_s": 252.2,
+      "val_loss": 1.8832204937934875,
+      "val_bpc": 2.7169128672963296
+    },
+    {
+      "step": 300,
+      "train_loss": 1.6228889226913452,
+      "bp_steps": 6,
+      "elapsed_s": 294.2,
+      "val_loss": 1.8561197370290756,
+      "val_bpc": 2.677814739907974
+    },
+    {
+      "step": 350,
+      "train_loss": 1.694682002067566,
+      "bp_steps": 6,
+      "elapsed_s": 337.2,
+      "val_loss": 1.8299427777528763,
+      "val_bpc": 2.640049370574649
+    },
+    {
+      "step": 400,
+      "train_loss": 1.6261965036392212,
+      "bp_steps": 6,
+      "elapsed_s": 380.0,
+      "val_loss": 1.791099727153778,
+      "val_bpc": 2.5840106941023313
+    },
+    {
+      "step": 450,
+      "train_loss": 1.5539060831069946,
+      "bp_steps": 6,
+      "elapsed_s": 422.6,
+      "val_loss": 1.765512377023697,
+      "val_bpc": 2.5470959509601734
+    },
+    {
+      "step": 500,
+      "train_loss": 1.5844773054122925,
+      "bp_steps": 6,
+      "elapsed_s": 464.6,
+      "val_loss": 1.7578453570604324,
+      "val_bpc": 2.536034779280775
+    },
+    {
+      "step": 550,
+      "train_loss": 1.5579670667648315,
+      "bp_steps": 6,
+      "elapsed_s": 505.5,
+      "val_loss": 1.7213522642850876,
+      "val_bpc": 2.4833863753070844
+    },
+    {
+      "step": 600,
+      "train_loss": 1.4751092195510864,
+      "bp_steps": 6,
+      "elapsed_s": 549.3,
+      "val_loss": 1.6976509094238281,
+      "val_bpc": 2.449192548186396
+    },
+    {
+      "step": 649,
+      "train_loss": 1.5490940809249878,
+      "bp_steps": 6,
+      "elapsed_s": 591.2,
+      "val_loss": 1.694478064775467,
+      "val_bpc": 2.444615100946694
+    }
+  ],
+  "sample": "KING RICHARD:\nThy for this wisely it one means!\n\nLAUCIO:\nI will I was you for me receith out so,\nWhich a perily that of the wake a wices is\nAnd true nempt thy or purposed maid with hither.\n\nDUCHESS OF YORK:\nBut for"
+}

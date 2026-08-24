@@ -1,0 +1,161 @@
+{
+  "variant": "hrm_loop5_kda_mhamoe_fullbp",
+  "config": {
+    "name": "hrm_loop5_kda_mhamoe_fullbp",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "kda",
+    "ffn_l": "moe",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 5,
+    "L_cycles": 2,
+    "bp_min_steps": 15,
+    "bp_max_steps": 15,
+    "cfg_overrides": {},
+    "note": "The 5-loop version of the above with gradients through all 15 applications: does looping to 5 help once truncation is removed?"
+  },
+  "hidden_size": 96,
+  "num_heads": 4,
+  "seq_len": 192,
+  "batch_size": 8,
+  "steps": 650,
+  "lr": 0.003,
+  "seed": 1,
+  "total_params": 868324,
+  "routed_expert_params": 589824,
+  "active_params": 425956,
+  "block_applications": 15,
+  "bp_steps_final": 15,
+  "grad_coverage": 1.0,
+  "unique_blocks": 2,
+  "final_train_loss": 1.5807209014892578,
+  "val_loss": 1.6839329898357391,
+  "val_bpc": 2.4294017736253464,
+  "val_ppl": 5.386700200984428,
+  "train_time_s": 1684.7,
+  "eval_time_s": 13.1,
+  "tokens_per_s": 592.6,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.6884284019470215,
+      "bp_steps": 15,
+      "elapsed_s": 7.6,
+      "val_loss": 4.642315924167633,
+      "val_bpc": 6.69744616203651
+    },
+    {
+      "step": 50,
+      "train_loss": 2.208272695541382,
+      "bp_steps": 15,
+      "elapsed_s": 132.1,
+      "val_loss": 2.2860397398471832,
+      "val_bpc": 3.298058195952627
+    },
+    {
+      "step": 100,
+      "train_loss": 1.9893029928207397,
+      "bp_steps": 15,
+      "elapsed_s": 254.9,
+      "val_loss": 2.116517946124077,
+      "val_bpc": 3.0534899448257
+    },
+    {
+      "step": 150,
+      "train_loss": 1.9620002508163452,
+      "bp_steps": 15,
+      "elapsed_s": 393.9,
+      "val_loss": 2.044775068759918,
+      "val_bpc": 2.9499868514333234
+    },
+    {
+      "step": 200,
+      "train_loss": 1.8179851770401,
+      "bp_steps": 15,
+      "elapsed_s": 536.4,
+      "val_loss": 1.9713578820228577,
+      "val_bpc": 2.844068240211747
+    },
+    {
+      "step": 250,
+      "train_loss": 1.8312630653381348,
+      "bp_steps": 15,
+      "elapsed_s": 686.2,
+      "val_loss": 1.913379281759262,
+      "val_bpc": 2.760422801133774
+    },
+    {
+      "step": 300,
+      "train_loss": 1.6578937768936157,
+      "bp_steps": 15,
+      "elapsed_s": 837.5,
+      "val_loss": 1.8985607475042343,
+      "val_bpc": 2.739044175250802
+    },
+    {
+      "step": 350,
+      "train_loss": 1.728930115699768,
+      "bp_steps": 15,
+      "elapsed_s": 965.6,
+      "val_loss": 1.8628775775432587,
+      "val_bpc": 2.6875642429049047
+    },
+    {
+      "step": 400,
+      "train_loss": 1.6693367958068848,
+      "bp_steps": 15,
+      "elapsed_s": 1085.9,
+      "val_loss": 1.8314344733953476,
+      "val_bpc": 2.642201432480558
+    },
+    {
+      "step": 450,
+      "train_loss": 1.60456120967865,
+      "bp_steps": 15,
+      "elapsed_s": 1201.6,
+      "val_loss": 1.8008705377578735,
+      "val_bpc": 2.598106994106325
+    },
+    {
+      "step": 500,
+      "train_loss": 1.605319619178772,
+      "bp_steps": 15,
+      "elapsed_s": 1319.6,
+      "val_loss": 1.772567704319954,
+      "val_bpc": 2.557274636662332
+    },
+    {
+      "step": 550,
+      "train_loss": 1.585105299949646,
+      "bp_steps": 15,
+      "elapsed_s": 1443.8,
+      "val_loss": 1.7386303693056107,
+      "val_bpc": 2.5083134117361516
+    },
+    {
+      "step": 600,
+      "train_loss": 1.486216425895691,
+      "bp_steps": 15,
+      "elapsed_s": 1564.0,
+      "val_loss": 1.726770594716072,
+      "val_bpc": 2.491203373749763
+    },
+    {
+      "step": 649,
+      "train_loss": 1.5807209014892578,
+      "bp_steps": 15,
+      "elapsed_s": 1679.3,
+      "val_loss": 1.7184974700212479,
+      "val_bpc": 2.4792677777798846
+    }
+  ],
+  "sample": "KING RICHARD:\nThy forms it with the dock me hand, in I the reganch\nDiscont now here hath love being some one\nBest at of you wake a man: my let, true,\nThe father well your dain wither the death.\n\nMENENY ELIXENES:\nHa"
+}

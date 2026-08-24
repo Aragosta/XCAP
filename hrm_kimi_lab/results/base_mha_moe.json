@@ -1,0 +1,129 @@
+{
+  "variant": "base_mha_moe",
+  "config": {
+    "name": "base_mha_moe",
+    "kind": "plain",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "mha",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "note": "Plain 4-layer transformer, MHA + Kimi Stable LatentMoE."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 12,
+  "steps": 700,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 3117568,
+  "routed_expert_params": 2162688,
+  "active_params": 1495552,
+  "final_train_loss": 1.4807528257369995,
+  "val_loss": 1.5919184267520905,
+  "val_bpc": 2.2966528197750016,
+  "val_ppl": 4.91316544101317,
+  "train_time_s": 277.2,
+  "eval_time_s": 2.6,
+  "tokens_per_s": 7757.7,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.764936447143555,
+      "bp_steps": 0,
+      "elapsed_s": 1.2
+    },
+    {
+      "step": 50,
+      "train_loss": 2.370988130569458,
+      "bp_steps": 0,
+      "elapsed_s": 21.5
+    },
+    {
+      "step": 100,
+      "train_loss": 2.145563840866089,
+      "bp_steps": 0,
+      "elapsed_s": 40.8
+    },
+    {
+      "step": 150,
+      "train_loss": 1.9733935594558716,
+      "bp_steps": 0,
+      "elapsed_s": 60.2
+    },
+    {
+      "step": 200,
+      "train_loss": 1.7773205041885376,
+      "bp_steps": 0,
+      "elapsed_s": 80.1
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7057485580444336,
+      "bp_steps": 0,
+      "elapsed_s": 99.8
+    },
+    {
+      "step": 300,
+      "train_loss": 1.6714348793029785,
+      "bp_steps": 0,
+      "elapsed_s": 119.3
+    },
+    {
+      "step": 350,
+      "train_loss": 1.6044152975082397,
+      "bp_steps": 0,
+      "elapsed_s": 138.7
+    },
+    {
+      "step": 400,
+      "train_loss": 1.5178271532058716,
+      "bp_steps": 0,
+      "elapsed_s": 158.3
+    },
+    {
+      "step": 450,
+      "train_loss": 1.5428484678268433,
+      "bp_steps": 0,
+      "elapsed_s": 178.0
+    },
+    {
+      "step": 500,
+      "train_loss": 1.4666491746902466,
+      "bp_steps": 0,
+      "elapsed_s": 198.1
+    },
+    {
+      "step": 550,
+      "train_loss": 1.4905139207839966,
+      "bp_steps": 0,
+      "elapsed_s": 217.7
+    },
+    {
+      "step": 600,
+      "train_loss": 1.4181514978408813,
+      "bp_steps": 0,
+      "elapsed_s": 237.8
+    },
+    {
+      "step": 650,
+      "train_loss": 1.4835357666015625,
+      "bp_steps": 0,
+      "elapsed_s": 256.9
+    },
+    {
+      "step": 699,
+      "train_loss": 1.4807528257369995,
+      "bp_steps": 0,
+      "elapsed_s": 277.2
+    }
+  ],
+  "sample": "KING RICHARD:\nThou makes here not made a measure,\nAnd gelse than of thy hounty here hath good beheld!\nThese is strate, your wakes man.\n\nCOMINIUS:\nWell, have soon speak one a man, if the winter.\n\nMENENIUS:\nRenture, "
+}

@@ -48,7 +48,8 @@ def sample(model: LM, data: CharData, prompt: str, n_tokens: int, seq_len: int, 
 
 
 def run(variant_name: str, steps: int, batch_size: int, seq_len: int, hidden: int, heads: int,
-        lr: float, seed: int, out_dir: Path, eval_iters: int = 20, log_every: int = 50) -> dict:
+        lr: float, seed: int, out_dir: Path, eval_iters: int = 20, log_every: int = 50,
+        eval_every: int = 0) -> dict:
     torch.manual_seed(seed)
     variant = VARIANTS[variant_name]
     data = CharData()
@@ -78,8 +79,14 @@ def run(variant_name: str, steps: int, batch_size: int, seq_len: int, hidden: in
         opt.step()
         opt.zero_grad(set_to_none=True)
         if step % log_every == 0 or step == steps - 1:
-            history.append({"step": step, "train_loss": float(loss.detach()), "bp_steps": bp,
-                            "elapsed_s": round(time.time() - t0, 1)})
+            entry = {"step": step, "train_loss": float(loss.detach()), "bp_steps": bp,
+                     "elapsed_s": round(time.time() - t0, 1)}
+            if eval_every and (step % eval_every == 0 or step == steps - 1):
+                vl = evaluate(model, data, batch_size, seq_len, 8)
+                entry["val_loss"] = vl
+                entry["val_bpc"] = vl / math.log(2)
+                print(f"[{variant_name}] step {step:5d} VAL bpc {vl/math.log(2):.4f}", flush=True)
+            history.append(entry)
             print(f"[{variant_name}] step {step:5d} loss {float(loss.detach()):.4f} bp {bp} "
                   f"{time.time()-t0:.0f}s", flush=True)
     train_time = time.time() - t0
@@ -129,7 +136,9 @@ if __name__ == "__main__":
     p.add_argument("--lr", type=float, default=3e-3)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--threads", type=int, default=2)
+    p.add_argument("--eval-every", type=int, default=0)
     p.add_argument("--out", type=Path, default=Path("results"))
     a = p.parse_args()
     torch.set_num_threads(a.threads)
-    run(a.variant, a.steps, a.batch_size, a.seq_len, a.hidden, a.heads, a.lr, a.seed, a.out)
+    run(a.variant, a.steps, a.batch_size, a.seq_len, a.hidden, a.heads, a.lr, a.seed, a.out,
+        eval_every=a.eval_every)

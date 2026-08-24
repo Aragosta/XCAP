@@ -16,6 +16,7 @@ def main():
     p.add_argument("--jobs", type=int, default=2)
     p.add_argument("--threads", type=int, default=2)
     p.add_argument("--out", default="results")
+    p.add_argument("--eval-every", type=int, default=0)
     p.add_argument("--only", nargs="*", default=None)
     a = p.parse_args()
 
@@ -32,7 +33,7 @@ def main():
             cmd = [sys.executable, "-m", "lab.train", name, "--steps", str(a.steps),
                    "--batch-size", str(a.batch_size), "--seq-len", str(a.seq_len),
                    "--lr", str(a.lr), "--seed", str(seed), "--threads", str(a.threads),
-                   "--out", str(ROOT / a.out)]
+                   "--out", str(ROOT / a.out), "--eval-every", str(a.eval_every)]
             log = open(logs / f"{tag}.log", "w")
             name = tag
             print(f"launch {tag}", flush=True)

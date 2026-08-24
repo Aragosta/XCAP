@@ -92,6 +92,34 @@ _V = [
                  "1 MHA+MoE layer). The honest 'good thing' to beat -- same idea without "
                  "the recurrence."),
 
+    # === focused long-run set ==============================================
+    # All-MoE channel mixer (dense FFN dropped), full backprop on every
+    # recurrent variant so HRM modules are compared at equal gradient coverage.
+    Variant("hrm_mha_moe_fullbp", "hrm", mixer_h="mha", ffn_h="moe", mixer_l="mha", ffn_l="moe",
+            H_cycles=2, L_cycles=2, bp_min_steps=6, bp_max_steps=6,
+            note="HRM module, MHA+MoE in both states, gradients through all 6 applications."),
+    Variant("hrm_kda_moe_fullbp", "hrm", mixer_h="kda", ffn_h="moe", mixer_l="kda", ffn_l="moe",
+            H_cycles=2, L_cycles=2, bp_min_steps=6, bp_max_steps=6,
+            note="HRM module, Kimi linear + MoE in both states, full gradients."),
+    Variant("hrm_hybrid_kda_mhamoe_fullbp", "hrm", mixer_h="mha", ffn_h="moe",
+            mixer_l="kda", ffn_l="moe", H_cycles=2, L_cycles=2,
+            bp_min_steps=6, bp_max_steps=6,
+            note="HRM module, fast(L)=Kimi linear, slow(H)=MHA, MoE in both, full gradients."),
+    Variant("hrm_loop5_kda_mhamoe_fullbp", "hrm", mixer_h="mha", ffn_h="moe",
+            mixer_l="kda", ffn_l="moe", H_cycles=5, L_cycles=2,
+            bp_min_steps=15, bp_max_steps=15,
+            note="The 5-loop version of the above with gradients through all 15 "
+                 "applications: does looping to 5 help once truncation is removed?"),
+    Variant("hrm_kda_x2_mhamoe_moe", "stacked", mixer_h="kda", ffn_h="moe",
+            mixer_l="kda", ffn_l="moe", mixer_top="mha", ffn_top="moe",
+            n_modules=2, H_cycles=2, L_cycles=2, bp_min_steps=6, bp_max_steps=6,
+            note="Two all-KDA HRM modules with an MHA+MoE layer over each, MoE throughout, "
+                 "full gradients: softmax attention over multiple HRM modules."),
+    Variant("base_hybrid_kda_mhamoe_x", "plain",
+            pattern=("kda:moe", "kda:moe", "kda:moe", "mha:moe"),
+            note="No recurrence: Kimi's 3:1 linear/full-attention stack, MoE throughout. "
+                 "The reference an HRM module has to beat."),
+
     # --- gradient-truncation controls -------------------------------------
     # Upstream HRM trains with a 1-step gradient: only the last bp_steps block
     # applications are in the graph (that is what buys O(1) memory). Against a

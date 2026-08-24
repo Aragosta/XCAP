@@ -1,0 +1,12 @@
+[hrm_loop5_kda_mhamoe_fullbp] step     0 VAL bpc 6.5646
+[hrm_loop5_kda_mhamoe_fullbp] step     0 loss 4.6172 bp 15 316s
+[hrm_loop5_kda_mhamoe_fullbp] step    50 VAL bpc 3.3168
+[hrm_loop5_kda_mhamoe_fullbp] step    50 loss 2.1745 bp 15 435s
+[hrm_loop5_kda_mhamoe_fullbp] step   100 VAL bpc 3.0506
+[hrm_loop5_kda_mhamoe_fullbp] step   100 loss 1.9952 bp 15 557s
+[hrm_loop5_kda_mhamoe_fullbp] step   150 VAL bpc 2.9405
+[hrm_loop5_kda_mhamoe_fullbp] step   150 loss 1.7855 bp 15 684s
+[hrm_loop5_kda_mhamoe_fullbp] step   200 VAL bpc 2.8428
+[hrm_loop5_kda_mhamoe_fullbp] step   200 loss 1.7344 bp 15 814s
+[hrm_loop5_kda_mhamoe_fullbp] step   250 VAL bpc 2.7918
+[hrm_loop5_kda_mhamoe_fullbp] step   250 loss 1.7827 bp 15 938s

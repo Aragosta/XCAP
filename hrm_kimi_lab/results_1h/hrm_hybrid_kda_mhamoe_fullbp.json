@@ -1,0 +1,161 @@
+{
+  "variant": "hrm_hybrid_kda_mhamoe_fullbp",
+  "config": {
+    "name": "hrm_hybrid_kda_mhamoe_fullbp",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "kda",
+    "ffn_l": "moe",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 6,
+    "bp_max_steps": 6,
+    "cfg_overrides": {},
+    "note": "HRM module, fast(L)=Kimi linear, slow(H)=MHA, MoE in both, full gradients."
+  },
+  "hidden_size": 96,
+  "num_heads": 4,
+  "seq_len": 192,
+  "batch_size": 8,
+  "steps": 650,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 868324,
+  "routed_expert_params": 589824,
+  "active_params": 425956,
+  "block_applications": 6,
+  "bp_steps_final": 6,
+  "grad_coverage": 1.0,
+  "unique_blocks": 2,
+  "final_train_loss": 1.4718955755233765,
+  "val_loss": 1.6464691758155823,
+  "val_bpc": 2.3753529149256796,
+  "val_ppl": 5.18862731569027,
+  "train_time_s": 877.5,
+  "eval_time_s": 4.9,
+  "tokens_per_s": 1137.7,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.6900954246521,
+      "bp_steps": 6,
+      "elapsed_s": 38.0,
+      "val_loss": 4.6505725383758545,
+      "val_bpc": 6.709357938409244
+    },
+    {
+      "step": 50,
+      "train_loss": 2.180047035217285,
+      "bp_steps": 6,
+      "elapsed_s": 352.3,
+      "val_loss": 2.2620797157287598,
+      "val_bpc": 3.263491187977398
+    },
+    {
+      "step": 100,
+      "train_loss": 1.9446808099746704,
+      "bp_steps": 6,
+      "elapsed_s": 395.4,
+      "val_loss": 2.0771380215883255,
+      "val_bpc": 2.99667672298739
+    },
+    {
+      "step": 150,
+      "train_loss": 1.7673856019973755,
+      "bp_steps": 6,
+      "elapsed_s": 439.7,
+      "val_loss": 1.9676816910505295,
+      "val_bpc": 2.8387646177266084
+    },
+    {
+      "step": 200,
+      "train_loss": 1.7049347162246704,
+      "bp_steps": 6,
+      "elapsed_s": 483.2,
+      "val_loss": 1.9248184859752655,
+      "val_bpc": 2.7769260843279184
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7257732152938843,
+      "bp_steps": 6,
+      "elapsed_s": 526.4,
+      "val_loss": 1.86924509704113,
+      "val_bpc": 2.6967506317072476
+    },
+    {
+      "step": 300,
+      "train_loss": 1.4789619445800781,
+      "bp_steps": 6,
+      "elapsed_s": 570.9,
+      "val_loss": 1.8382438272237778,
+      "val_bpc": 2.6520252534804927
+    },
+    {
+      "step": 350,
+      "train_loss": 1.627503514289856,
+      "bp_steps": 6,
+      "elapsed_s": 614.8,
+      "val_loss": 1.788400575518608,
+      "val_bpc": 2.5801166414236643
+    },
+    {
+      "step": 400,
+      "train_loss": 1.6392089128494263,
+      "bp_steps": 6,
+      "elapsed_s": 660.4,
+      "val_loss": 1.768712431192398,
+      "val_bpc": 2.551712653239935
+    },
+    {
+      "step": 450,
+      "train_loss": 1.6475201845169067,
+      "bp_steps": 6,
+      "elapsed_s": 702.9,
+      "val_loss": 1.7527650147676468,
+      "val_bpc": 2.528705394648955
+    },
+    {
+      "step": 500,
+      "train_loss": 1.550742745399475,
+      "bp_steps": 6,
+      "elapsed_s": 745.8,
+      "val_loss": 1.7370644360780716,
+      "val_bpc": 2.5060542476344176
+    },
+    {
+      "step": 550,
+      "train_loss": 1.4851969480514526,
+      "bp_steps": 6,
+      "elapsed_s": 789.6,
+      "val_loss": 1.7265414595603943,
+      "val_bpc": 2.4908728015969737
+    },
+    {
+      "step": 600,
+      "train_loss": 1.479848861694336,
+      "bp_steps": 6,
+      "elapsed_s": 832.6,
+      "val_loss": 1.7112898975610733,
+      "val_bpc": 2.468869448734743
+    },
+    {
+      "step": 649,
+      "train_loss": 1.4718955755233765,
+      "bp_steps": 6,
+      "elapsed_s": 875.6,
+      "val_loss": 1.697849452495575,
+      "val_bpc": 2.4494789852914076
+    }
+  ],
+  "sample": "KING RICHARD:\nThou makest sweetly made a gently youd I to the Melse,\nBy his time of his head she have so shall\nWelp so your wake a will my art, true:\nThis is our punistor of my his head and the bross with this.\n\nQU"
+}

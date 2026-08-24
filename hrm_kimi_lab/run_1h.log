@@ -1,2 +1,4 @@
 launch hrm_loop5_kda_mhamoe_fullbp
 launch hrm_hybrid_kda_mhamoe_fullbp
+done   hrm_hybrid_kda_mhamoe_fullbp rc=0 (900s elapsed)
+launch base_hybrid_kda_mhamoe_x

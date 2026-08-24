@@ -1,0 +1,29 @@
+[hrm_hybrid_kda_mhamoe_fullbp] step     0 VAL bpc 6.7094
+[hrm_hybrid_kda_mhamoe_fullbp] step     0 loss 4.6901 bp 6 126s
+[hrm_hybrid_kda_mhamoe_fullbp] step    50 VAL bpc 3.2635
+[hrm_hybrid_kda_mhamoe_fullbp] step    50 loss 2.1800 bp 6 354s
+[hrm_hybrid_kda_mhamoe_fullbp] step   100 VAL bpc 2.9967
+[hrm_hybrid_kda_mhamoe_fullbp] step   100 loss 1.9447 bp 6 397s
+[hrm_hybrid_kda_mhamoe_fullbp] step   150 VAL bpc 2.8388
+[hrm_hybrid_kda_mhamoe_fullbp] step   150 loss 1.7674 bp 6 442s
+[hrm_hybrid_kda_mhamoe_fullbp] step   200 VAL bpc 2.7769
+[hrm_hybrid_kda_mhamoe_fullbp] step   200 loss 1.7049 bp 6 485s
+[hrm_hybrid_kda_mhamoe_fullbp] step   250 VAL bpc 2.6968
+[hrm_hybrid_kda_mhamoe_fullbp] step   250 loss 1.7258 bp 6 528s
+[hrm_hybrid_kda_mhamoe_fullbp] step   300 VAL bpc 2.6520
+[hrm_hybrid_kda_mhamoe_fullbp] step   300 loss 1.4790 bp 6 573s
+[hrm_hybrid_kda_mhamoe_fullbp] step   350 VAL bpc 2.5801
+[hrm_hybrid_kda_mhamoe_fullbp] step   350 loss 1.6275 bp 6 617s
+[hrm_hybrid_kda_mhamoe_fullbp] step   400 VAL bpc 2.5517
+[hrm_hybrid_kda_mhamoe_fullbp] step   400 loss 1.6392 bp 6 662s
+[hrm_hybrid_kda_mhamoe_fullbp] step   450 VAL bpc 2.5287
+[hrm_hybrid_kda_mhamoe_fullbp] step   450 loss 1.6475 bp 6 705s
+[hrm_hybrid_kda_mhamoe_fullbp] step   500 VAL bpc 2.5061
+[hrm_hybrid_kda_mhamoe_fullbp] step   500 loss 1.5507 bp 6 748s
+[hrm_hybrid_kda_mhamoe_fullbp] step   550 VAL bpc 2.4909
+[hrm_hybrid_kda_mhamoe_fullbp] step   550 loss 1.4852 bp 6 791s
+[hrm_hybrid_kda_mhamoe_fullbp] step   600 VAL bpc 2.4689
+[hrm_hybrid_kda_mhamoe_fullbp] step   600 loss 1.4798 bp 6 835s
+[hrm_hybrid_kda_mhamoe_fullbp] step   649 VAL bpc 2.4495
+[hrm_hybrid_kda_mhamoe_fullbp] step   649 loss 1.4719 bp 6 878s
+[hrm_hybrid_kda_mhamoe_fullbp] val_loss 1.6465 bpc 2.3754 (878s, 868,324 params)

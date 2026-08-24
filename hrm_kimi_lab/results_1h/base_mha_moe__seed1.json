@@ -1,0 +1,239 @@
+{
+  "variant": "base_mha_moe",
+  "config": {
+    "name": "base_mha_moe",
+    "kind": "plain",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "mha",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "cfg_overrides": {},
+    "note": "Plain 4-layer transformer, MHA + Kimi Stable LatentMoE."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 8,
+  "steps": 1300,
+  "lr": 0.003,
+  "seed": 1,
+  "total_params": 3117568,
+  "routed_expert_params": 2162688,
+  "active_params": 1495552,
+  "block_applications": 4,
+  "bp_steps_final": 0,
+  "grad_coverage": 1.0,
+  "unique_blocks": 4,
+  "final_train_loss": 1.4273256063461304,
+  "val_loss": 1.54901984333992,
+  "val_bpc": 2.2347632462251017,
+  "val_ppl": 4.706854466144644,
+  "train_time_s": 370.8,
+  "eval_time_s": 1.8,
+  "tokens_per_s": 7180.1,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.584563255310059,
+      "bp_steps": 0,
+      "elapsed_s": 0.5,
+      "val_loss": 4.525992333889008,
+      "val_bpc": 6.529626695203137
+    },
+    {
+      "step": 50,
+      "train_loss": 2.4600865840911865,
+      "bp_steps": 0,
+      "elapsed_s": 16.7
+    },
+    {
+      "step": 100,
+      "train_loss": 2.18765926361084,
+      "bp_steps": 0,
+      "elapsed_s": 30.9,
+      "val_loss": 2.2188231348991394,
+      "val_bpc": 3.201085133328692
+    },
+    {
+      "step": 150,
+      "train_loss": 1.9668506383895874,
+      "bp_steps": 0,
+      "elapsed_s": 46.2
+    },
+    {
+      "step": 200,
+      "train_loss": 1.8899641036987305,
+      "bp_steps": 0,
+      "elapsed_s": 59.8,
+      "val_loss": 2.0159545987844467,
+      "val_bpc": 2.9084077023236214
+    },
+    {
+      "step": 250,
+      "train_loss": 1.8539707660675049,
+      "bp_steps": 0,
+      "elapsed_s": 74.5
+    },
+    {
+      "step": 300,
+      "train_loss": 1.7472532987594604,
+      "bp_steps": 0,
+      "elapsed_s": 88.9,
+      "val_loss": 1.882227599620819,
+      "val_bpc": 2.715480423797293
+    },
+    {
+      "step": 350,
+      "train_loss": 1.69329833984375,
+      "bp_steps": 0,
+      "elapsed_s": 103.2
+    },
+    {
+      "step": 400,
+      "train_loss": 1.5547341108322144,
+      "bp_steps": 0,
+      "elapsed_s": 117.9,
+      "val_loss": 1.8124870508909225,
+      "val_bpc": 2.6148660799957963
+    },
+    {
+      "step": 450,
+      "train_loss": 1.6198482513427734,
+      "bp_steps": 0,
+      "elapsed_s": 132.6
+    },
+    {
+      "step": 500,
+      "train_loss": 1.6201149225234985,
+      "bp_steps": 0,
+      "elapsed_s": 146.4,
+      "val_loss": 1.754624605178833,
+      "val_bpc": 2.5313882165132577
+    },
+    {
+      "step": 550,
+      "train_loss": 1.5122021436691284,
+      "bp_steps": 0,
+      "elapsed_s": 161.1
+    },
+    {
+      "step": 600,
+      "train_loss": 1.5210249423980713,
+      "bp_steps": 0,
+      "elapsed_s": 174.8,
+      "val_loss": 1.7128304839134216,
+      "val_bpc": 2.471092045025337
+    },
+    {
+      "step": 650,
+      "train_loss": 1.5341382026672363,
+      "bp_steps": 0,
+      "elapsed_s": 189.2
+    },
+    {
+      "step": 700,
+      "train_loss": 1.5420293807983398,
+      "bp_steps": 0,
+      "elapsed_s": 202.8,
+      "val_loss": 1.6740590035915375,
+      "val_bpc": 2.4151566226370305
+    },
+    {
+      "step": 750,
+      "train_loss": 1.4891737699508667,
+      "bp_steps": 0,
+      "elapsed_s": 217.5
+    },
+    {
+      "step": 800,
+      "train_loss": 1.4893972873687744,
+      "bp_steps": 0,
+      "elapsed_s": 231.2,
+      "val_loss": 1.6430591195821762,
+      "val_bpc": 2.370433243708592
+    },
+    {
+      "step": 850,
+      "train_loss": 1.400030255317688,
+      "bp_steps": 0,
+      "elapsed_s": 245.2
+    },
+    {
+      "step": 900,
+      "train_loss": 1.362512230873108,
+      "bp_steps": 0,
+      "elapsed_s": 258.9,
+      "val_loss": 1.627237617969513,
+      "val_bpc": 2.347607641792586
+    },
+    {
+      "step": 950,
+      "train_loss": 1.4110081195831299,
+      "bp_steps": 0,
+      "elapsed_s": 273.0
+    },
+    {
+      "step": 1000,
+      "train_loss": 1.4476726055145264,
+      "bp_steps": 0,
+      "elapsed_s": 286.5,
+      "val_loss": 1.590589001774788,
+      "val_bpc": 2.2947348649530133
+    },
+    {
+      "step": 1050,
+      "train_loss": 1.2973252534866333,
+      "bp_steps": 0,
+      "elapsed_s": 300.8
+    },
+    {
+      "step": 1100,
+      "train_loss": 1.410164475440979,
+      "bp_steps": 0,
+      "elapsed_s": 314.3,
+      "val_loss": 1.566887989640236,
+      "val_bpc": 2.260541532282446
+    },
+    {
+      "step": 1150,
+      "train_loss": 1.2995585203170776,
+      "bp_steps": 0,
+      "elapsed_s": 328.9
+    },
+    {
+      "step": 1200,
+      "train_loss": 1.3401163816452026,
+      "bp_steps": 0,
+      "elapsed_s": 342.5,
+      "val_loss": 1.5652685463428497,
+      "val_bpc": 2.258205169468306
+    },
+    {
+      "step": 1250,
+      "train_loss": 1.3232756853103638,
+      "bp_steps": 0,
+      "elapsed_s": 356.9
+    },
+    {
+      "step": 1299,
+      "train_loss": 1.4273256063461304,
+      "bp_steps": 0,
+      "elapsed_s": 370.1,
+      "val_loss": 1.5567214041948318,
+      "val_bpc": 2.2458742498775877
+    }
+  ],
+  "sample": "KING RICHARD:\nThou makes thou not made a means that wilt strength\nour continted and his honour of life.\n\nGLOUCESTER:\nWhy, this permanded it died, and devil the earth.\n\nRIVERS:\nHeir hither breach the sweet denied wa"
+}

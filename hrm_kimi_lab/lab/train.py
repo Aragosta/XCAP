@@ -92,6 +92,8 @@ def run(variant_name: str, steps: int, batch_size: int, seq_len: int, hidden: in
         "hidden_size": hidden, "num_heads": heads, "seq_len": seq_len,
         "batch_size": batch_size, "steps": steps, "lr": lr, "seed": seed,
         **stats,
+        "block_applications": variant.block_applications,
+        "unique_blocks": variant.unique_blocks,
         "final_train_loss": history[-1]["train_loss"],
         "val_loss": val_loss,
         "val_bpc": val_loss / math.log(2),
@@ -103,9 +105,10 @@ def run(variant_name: str, steps: int, batch_size: int, seq_len: int, hidden: in
         "sample": sample(model, data, "KING RICHARD:\n", 200, seq_len),
     }
     out_dir.mkdir(parents=True, exist_ok=True)
+    tag = variant_name if seed == 0 else f"{variant_name}__seed{seed}"
     torch.save({"variant": variant_name, "hidden": hidden, "heads": heads, "seq_len": seq_len,
-                "state_dict": model.state_dict()}, out_dir / f"{variant_name}.pt")
-    (out_dir / f"{variant_name}.json").write_text(json.dumps(result, indent=2))
+                "state_dict": model.state_dict()}, out_dir / f"{tag}.pt")
+    (out_dir / f"{tag}.json").write_text(json.dumps(result, indent=2))
     print(f"[{variant_name}] val_loss {val_loss:.4f} bpc {result['val_bpc']:.4f} "
           f"({train_time:.0f}s, {stats['total_params']:,} params)", flush=True)
     return result

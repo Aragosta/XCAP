@@ -35,7 +35,8 @@ class BlockConfig:
 
     # KDA
     kda_chunk_size: int = 64
-    kda_conv_kernel: int = 4
+    kda_conv_kernel: int = 4      # set to 1 to disable KDA's short conv (ablation)
+    mha_conv_kernel: int = 0      # set to 4 to give MHA the same short conv (ablation)
 
     @property
     def head_dim(self) -> int:
@@ -112,6 +113,7 @@ class Block(nn.Module):
             self.mixer = Attention(
                 cfg.hidden_size, cfg.head_dim, cfg.num_heads,
                 init_std_in=cfg.init_in_std, init_std_out=cfg.init_in_std,
+                conv_kernel=cfg.mha_conv_kernel,
             )
         else:
             self.mixer = KDAMixer(cfg)

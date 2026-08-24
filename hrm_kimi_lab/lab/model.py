@@ -114,10 +114,23 @@ class Variant:
     L_cycles: int = 2
     bp_min_steps: int = 2
     bp_max_steps: int = 5
+    cfg_overrides: dict = field(default_factory=dict)   # BlockConfig knobs (ablations)
     note: str = ""
+
+    @property
+    def block_applications(self) -> int:
+        """Block forward passes per token, per model forward (compute proxy)."""
+        if self.kind == "plain":
+            return self.n_layers
+        return self.H_cycles * (self.L_cycles * self.l_layers + self.h_layers)
+
+    @property
+    def unique_blocks(self) -> int:
+        return self.n_layers if self.kind == "plain" else self.h_layers + self.l_layers
 
 
 def build(variant: Variant, vocab_size: int, base: BlockConfig) -> LM:
+    base = replace(base, **variant.cfg_overrides)
     if variant.kind == "plain":
         cfg = replace(base, mixer=variant.mixer_h, ffn=variant.ffn_h)
         core = PlainCore(cfg, variant.n_layers)

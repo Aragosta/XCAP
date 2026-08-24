@@ -30,7 +30,10 @@ def main():
     data = CharData()
     out = {}
     for ckpt_path in sorted(a.results.glob("*.pt")):
-        variant = VARIANTS[ckpt_path.stem]
+        name = ckpt_path.stem.split("__seed")[0]
+        if name != ckpt_path.stem:      # only the seed-0 checkpoints
+            continue
+        variant = VARIANTS[name]
         if variant.kind != "hrm":
             continue
         ckpt = torch.load(ckpt_path, weights_only=False)

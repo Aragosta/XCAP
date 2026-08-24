@@ -37,14 +37,17 @@ def lm_causality(name, T=64):
 
 if __name__ == "__main__":
     print("== per-block causality (max |delta| on past positions must be ~0) ==")
-    for mixer in ("mha", "kda"):
-        for ffn in ("dense", "moe"):
-            cfg = BlockConfig(hidden_size=64, num_heads=4, max_seq_len=96, mixer=mixer, ffn=ffn)
+    configs = [("mha", "dense", {}), ("mha", "moe", {}), ("kda", "dense", {}), ("kda", "moe", {}),
+               ("mha", "dense", {"mha_conv_kernel": 4}), ("kda", "dense", {"kda_conv_kernel": 1})]
+    for mixer, ffn, extra in configs:
+        if True:
+            cfg = BlockConfig(hidden_size=64, num_heads=4, max_seq_len=96, mixer=mixer, ffn=ffn, **extra)
             torch.manual_seed(0)
             s = Stack(cfg, 2).eval()
             with torch.no_grad():
                 past, future = causality(s)
-            print(f"  {mixer}+{ffn:5s} past {past:.2e}   future {future:.2e} (should be large)")
+            label = f"{mixer}+{ffn}" + (f" {extra}" if extra else "")
+            print(f"  {label:34s} past {past:.2e}   future {future:.2e} (should be large)")
 
     print("== full-model causality: flip the LAST token, earlier logits must not move ==")
     for name in ("base_kda_dense", "hrm_kda_dense", "hrm_loop5_kda_mhamoe", "base_mha_dense"):

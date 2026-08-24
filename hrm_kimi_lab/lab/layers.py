@@ -82,10 +82,21 @@ class ScaledEmbeddingInit(nn.Module):
 class Attention(nn.Module):
     """Upstream HRM-Text gated MHA (sigmoid gate on the attention output)."""
 
-    def __init__(self, hidden_size, head_dim, num_heads, init_std_in=None, init_std_out=None):
+    def __init__(self, hidden_size, head_dim, num_heads, init_std_in=None, init_std_out=None,
+                 conv_kernel: int = 0):
         super().__init__()
         self.head_dim = head_dim
         self.num_heads = num_heads
+        # Optional short causal depthwise conv on q/k/v, matching the one KDA
+        # applies inside its projections. Off by default (upstream HRM-Text has none);
+        # used only by the `*_conv` ablation variants so MHA and KDA can be compared
+        # with the same local inductive bias.
+        self.conv = None
+        if conv_kernel and conv_kernel > 1:
+            from src.kimi_primitives import CausalShortConv1D
+            width = head_dim * num_heads
+            self.conv = nn.ModuleList([CausalShortConv1D(width, conv_kernel, bias=False)
+                                       for _ in range(3)])
         self.gqkv_proj = LinearInit(
             hidden_size, head_dim, batch_out_features=(4 * num_heads,), bias=False, init_std=init_std_in
         )
@@ -95,6 +106,11 @@ class Attention(nn.Module):
         b, t, _ = hidden_states.shape
         gqkv = self.gqkv_proj(hidden_states).view(b, t, 4 * self.num_heads, self.head_dim)
         gate, query, key, value = gqkv.split(self.num_heads, dim=-2)
+        if self.conv is not None:
+            flat = lambda z: z.reshape(b, t, self.num_heads * self.head_dim)
+            unflat = lambda z: z.view(b, t, self.num_heads, self.head_dim)
+            query, key, value = (unflat(c(flat(z))) for c, z in
+                                 zip(self.conv, (query, key, value)))
         if cos_sin is not None:
             query = apply_rotary_pos_emb(query, cos_sin)
             key = apply_rotary_pos_emb(key, cos_sin)

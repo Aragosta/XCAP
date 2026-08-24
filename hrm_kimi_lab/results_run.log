@@ -10,3 +10,5 @@ done   base_kda_dense rc=0 (975s elapsed)
 launch hrm_loop5_kda_mhamoe
 done   hrm_kda_dense rc=0 (2165s elapsed)
 launch hrm_mha_dense
+done   hrm_loop5_kda_mhamoe rc=0 (2300s elapsed)
+launch hrm_loop5_kda_mha

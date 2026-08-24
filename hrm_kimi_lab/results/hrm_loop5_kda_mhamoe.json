@@ -1,0 +1,129 @@
+{
+  "variant": "hrm_loop5_kda_mhamoe",
+  "config": {
+    "name": "hrm_loop5_kda_mhamoe",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "kda",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 5,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "note": "#3 5 outer loops: fast(L)=Kimi linear, slow(H)=MHA+MoE across loops."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 12,
+  "steps": 700,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 1019460,
+  "routed_expert_params": 540672,
+  "active_params": 613956,
+  "final_train_loss": 1.5397109985351562,
+  "val_loss": 1.6515133261680603,
+  "val_bpc": 2.382630085624698,
+  "val_ppl": 5.214865651415988,
+  "train_time_s": 1272.5,
+  "eval_time_s": 23.3,
+  "tokens_per_s": 1689.9,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.602955341339111,
+      "bp_steps": 2,
+      "elapsed_s": 2.2
+    },
+    {
+      "step": 50,
+      "train_loss": 2.3066635131835938,
+      "bp_steps": 2,
+      "elapsed_s": 72.7
+    },
+    {
+      "step": 100,
+      "train_loss": 2.069896936416626,
+      "bp_steps": 3,
+      "elapsed_s": 142.6
+    },
+    {
+      "step": 150,
+      "train_loss": 1.9287381172180176,
+      "bp_steps": 4,
+      "elapsed_s": 214.2
+    },
+    {
+      "step": 200,
+      "train_loss": 1.7686845064163208,
+      "bp_steps": 4,
+      "elapsed_s": 335.3
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7513645887374878,
+      "bp_steps": 5,
+      "elapsed_s": 414.3
+    },
+    {
+      "step": 300,
+      "train_loss": 1.6954096555709839,
+      "bp_steps": 5,
+      "elapsed_s": 498.6
+    },
+    {
+      "step": 350,
+      "train_loss": 1.6428003311157227,
+      "bp_steps": 5,
+      "elapsed_s": 616.9
+    },
+    {
+      "step": 400,
+      "train_loss": 1.5422511100769043,
+      "bp_steps": 5,
+      "elapsed_s": 698.2
+    },
+    {
+      "step": 450,
+      "train_loss": 1.5815318822860718,
+      "bp_steps": 5,
+      "elapsed_s": 778.3
+    },
+    {
+      "step": 500,
+      "train_loss": 1.4958382844924927,
+      "bp_steps": 5,
+      "elapsed_s": 859.9
+    },
+    {
+      "step": 550,
+      "train_loss": 1.5411642789840698,
+      "bp_steps": 5,
+      "elapsed_s": 954.5
+    },
+    {
+      "step": 600,
+      "train_loss": 1.4796414375305176,
+      "bp_steps": 5,
+      "elapsed_s": 1110.4
+    },
+    {
+      "step": 650,
+      "train_loss": 1.545362949371338,
+      "bp_steps": 5,
+      "elapsed_s": 1192.7
+    },
+    {
+      "step": 699,
+      "train_loss": 1.5397109985351562,
+      "bp_steps": 5,
+      "elapsed_s": 1272.5
+    }
+  ],
+  "sample": "KING RICHARD:\nThou must know self it one means by your to thee\nyou upon his true receive of bloody in me,\nBut the pertesses it perceives in rightrunch,\nThe stook of Pother al's him oft the head and suffered\nBut for"
+}

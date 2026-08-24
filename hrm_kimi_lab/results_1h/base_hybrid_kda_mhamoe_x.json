@@ -1,0 +1,166 @@
+{
+  "variant": "base_hybrid_kda_mhamoe_x",
+  "config": {
+    "name": "base_hybrid_kda_mhamoe_x",
+    "kind": "plain",
+    "mixer_h": "mha",
+    "ffn_h": "dense",
+    "mixer_l": "mha",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [
+      "kda:moe",
+      "kda:moe",
+      "kda:moe",
+      "mha:moe"
+    ],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "cfg_overrides": {},
+    "note": "No recurrence: Kimi's 3:1 linear/full-attention stack, MoE throughout. The reference an HRM module has to beat."
+  },
+  "hidden_size": 96,
+  "num_heads": 4,
+  "seq_len": 192,
+  "batch_size": 8,
+  "steps": 650,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 1730508,
+  "routed_expert_params": 1179648,
+  "active_params": 845772,
+  "block_applications": 4,
+  "bp_steps_final": 0,
+  "grad_coverage": 1.0,
+  "unique_blocks": 4,
+  "final_train_loss": 1.4513689279556274,
+  "val_loss": 1.6151784241199494,
+  "val_bpc": 2.330209902628702,
+  "val_ppl": 5.028785099983283,
+  "train_time_s": 410.6,
+  "eval_time_s": 3.2,
+  "tokens_per_s": 2431.7,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.697352886199951,
+      "bp_steps": 0,
+      "elapsed_s": 0.8,
+      "val_loss": 4.610292315483093,
+      "val_bpc": 6.651245860595956
+    },
+    {
+      "step": 50,
+      "train_loss": 2.0452213287353516,
+      "bp_steps": 0,
+      "elapsed_s": 31.3,
+      "val_loss": 2.1945258378982544,
+      "val_bpc": 3.166031543438509
+    },
+    {
+      "step": 100,
+      "train_loss": 1.8181878328323364,
+      "bp_steps": 0,
+      "elapsed_s": 64.4,
+      "val_loss": 1.994163155555725,
+      "val_bpc": 2.876969295243731
+    },
+    {
+      "step": 150,
+      "train_loss": 1.692625641822815,
+      "bp_steps": 0,
+      "elapsed_s": 93.9,
+      "val_loss": 1.9272541105747223,
+      "val_bpc": 2.780439947859022
+    },
+    {
+      "step": 200,
+      "train_loss": 1.624498724937439,
+      "bp_steps": 0,
+      "elapsed_s": 125.1,
+      "val_loss": 1.8593485057353973,
+      "val_bpc": 2.682472868508762
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7129637002944946,
+      "bp_steps": 0,
+      "elapsed_s": 159.0,
+      "val_loss": 1.8328724950551987,
+      "val_bpc": 2.6442760591979164
+    },
+    {
+      "step": 300,
+      "train_loss": 1.4465770721435547,
+      "bp_steps": 0,
+      "elapsed_s": 190.6,
+      "val_loss": 1.803190752863884,
+      "val_bpc": 2.6014543569335618
+    },
+    {
+      "step": 350,
+      "train_loss": 1.575547218322754,
+      "bp_steps": 0,
+      "elapsed_s": 222.1,
+      "val_loss": 1.7583696395158768,
+      "val_bpc": 2.5367911589792698
+    },
+    {
+      "step": 400,
+      "train_loss": 1.589146614074707,
+      "bp_steps": 0,
+      "elapsed_s": 254.7,
+      "val_loss": 1.7340077459812164,
+      "val_bpc": 2.5016443759901503
+    },
+    {
+      "step": 450,
+      "train_loss": 1.6229265928268433,
+      "bp_steps": 0,
+      "elapsed_s": 286.3,
+      "val_loss": 1.707090601325035,
+      "val_bpc": 2.4628111448797867
+    },
+    {
+      "step": 500,
+      "train_loss": 1.4894458055496216,
+      "bp_steps": 0,
+      "elapsed_s": 317.4,
+      "val_loss": 1.698919728398323,
+      "val_bpc": 2.4510230670286854
+    },
+    {
+      "step": 550,
+      "train_loss": 1.4778534173965454,
+      "bp_steps": 0,
+      "elapsed_s": 347.5,
+      "val_loss": 1.6873544305562973,
+      "val_bpc": 2.434337869185591
+    },
+    {
+      "step": 600,
+      "train_loss": 1.4409594535827637,
+      "bp_steps": 0,
+      "elapsed_s": 378.2,
+      "val_loss": 1.6688035428524017,
+      "val_bpc": 2.4075745954910928
+    },
+    {
+      "step": 649,
+      "train_loss": 1.4513689279556274,
+      "bp_steps": 0,
+      "elapsed_s": 409.3,
+      "val_loss": 1.6594375967979431,
+      "val_bpc": 2.394062391565092
+    }
+  ],
+  "sample": "KING RICHARD:\nThou must there, lead?\nHow near you do I the father fairy hath were:\nOur justice of loves. I have that of your come\nYour senate forfend there the executy one.\n\nShepherd:\nAnd the concling.\n\nFirst March"
+}

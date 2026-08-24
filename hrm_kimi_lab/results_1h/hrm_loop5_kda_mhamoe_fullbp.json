@@ -1,0 +1,161 @@
+{
+  "variant": "hrm_loop5_kda_mhamoe_fullbp",
+  "config": {
+    "name": "hrm_loop5_kda_mhamoe_fullbp",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "kda",
+    "ffn_l": "moe",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 5,
+    "L_cycles": 2,
+    "bp_min_steps": 15,
+    "bp_max_steps": 15,
+    "cfg_overrides": {},
+    "note": "The 5-loop version of the above with gradients through all 15 applications: does looping to 5 help once truncation is removed?"
+  },
+  "hidden_size": 96,
+  "num_heads": 4,
+  "seq_len": 192,
+  "batch_size": 8,
+  "steps": 650,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 868324,
+  "routed_expert_params": 589824,
+  "active_params": 425956,
+  "block_applications": 15,
+  "bp_steps_final": 15,
+  "grad_coverage": 1.0,
+  "unique_blocks": 2,
+  "final_train_loss": 1.506182312965393,
+  "val_loss": 1.673643982410431,
+  "val_bpc": 2.414557873637184,
+  "val_ppl": 5.331560555170791,
+  "train_time_s": 1928.5,
+  "eval_time_s": 15.6,
+  "tokens_per_s": 517.7,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.617193222045898,
+      "bp_steps": 15,
+      "elapsed_s": 156.1,
+      "val_loss": 4.55026775598526,
+      "val_bpc": 6.564648726276887
+    },
+    {
+      "step": 50,
+      "train_loss": 2.174523115158081,
+      "bp_steps": 15,
+      "elapsed_s": 429.2,
+      "val_loss": 2.299045145511627,
+      "val_bpc": 3.31682103020947
+    },
+    {
+      "step": 100,
+      "train_loss": 1.9952069520950317,
+      "bp_steps": 15,
+      "elapsed_s": 551.1,
+      "val_loss": 2.114524394273758,
+      "val_bpc": 3.0506138574574897
+    },
+    {
+      "step": 150,
+      "train_loss": 1.7855356931686401,
+      "bp_steps": 15,
+      "elapsed_s": 677.6,
+      "val_loss": 2.038205549120903,
+      "val_bpc": 2.9405090380290932
+    },
+    {
+      "step": 200,
+      "train_loss": 1.73444664478302,
+      "bp_steps": 15,
+      "elapsed_s": 808.3,
+      "val_loss": 1.9704666435718536,
+      "val_bpc": 2.842782454918234
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7826694250106812,
+      "bp_steps": 15,
+      "elapsed_s": 932.0,
+      "val_loss": 1.935113176703453,
+      "val_bpc": 2.7917781835889603
+    },
+    {
+      "step": 300,
+      "train_loss": 1.528488278388977,
+      "bp_steps": 15,
+      "elapsed_s": 1061.1,
+      "val_loss": 1.8999149054288864,
+      "val_bpc": 2.7409978121732785
+    },
+    {
+      "step": 350,
+      "train_loss": 1.6529473066329956,
+      "bp_steps": 15,
+      "elapsed_s": 1187.5,
+      "val_loss": 1.836869940161705,
+      "val_bpc": 2.6500431534292987
+    },
+    {
+      "step": 400,
+      "train_loss": 1.637691617012024,
+      "bp_steps": 15,
+      "elapsed_s": 1310.9,
+      "val_loss": 1.8205717504024506,
+      "val_bpc": 2.6265298358881553
+    },
+    {
+      "step": 450,
+      "train_loss": 1.6686941385269165,
+      "bp_steps": 15,
+      "elapsed_s": 1432.4,
+      "val_loss": 1.78898786008358,
+      "val_bpc": 2.5809639139531395
+    },
+    {
+      "step": 500,
+      "train_loss": 1.5558065176010132,
+      "bp_steps": 15,
+      "elapsed_s": 1555.2,
+      "val_loss": 1.7655373364686966,
+      "val_bpc": 2.547131959827698
+    },
+    {
+      "step": 550,
+      "train_loss": 1.532051920890808,
+      "bp_steps": 15,
+      "elapsed_s": 1680.9,
+      "val_loss": 1.758305087685585,
+      "val_bpc": 2.5366980303738274
+    },
+    {
+      "step": 600,
+      "train_loss": 1.5145343542099,
+      "bp_steps": 15,
+      "elapsed_s": 1803.3,
+      "val_loss": 1.734400749206543,
+      "val_bpc": 2.5022113597943823
+    },
+    {
+      "step": 649,
+      "train_loss": 1.506182312965393,
+      "bp_steps": 15,
+      "elapsed_s": 1922.5,
+      "val_loss": 1.7211497128009796,
+      "val_bpc": 2.483094155285437
+    }
+  ],
+  "sample": "KING RICHARD:\nThy lord, I would the deceives, you down,\nThere Melcoursy his to here hear this being some shall\nstands, your wake a will my friendry and hands\nHow purpotion and wiiled the death of the well\nThat. So "
+}

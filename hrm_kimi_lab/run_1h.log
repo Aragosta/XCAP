@@ -2,3 +2,9 @@ launch hrm_loop5_kda_mhamoe_fullbp
 launch hrm_hybrid_kda_mhamoe_fullbp
 done   hrm_hybrid_kda_mhamoe_fullbp rc=0 (900s elapsed)
 launch base_hybrid_kda_mhamoe_x
+done   base_hybrid_kda_mhamoe_x rc=0 (1325s elapsed)
+launch hrm_loop5_kda_mhamoe_fullbp__seed1
+done   hrm_loop5_kda_mhamoe_fullbp rc=0 (1980s elapsed)
+launch hrm_hybrid_kda_mhamoe_fullbp__seed1
+done   hrm_hybrid_kda_mhamoe_fullbp__seed1 rc=0 (2575s elapsed)
+launch base_hybrid_kda_mhamoe_x__seed1

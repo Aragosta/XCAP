@@ -18,3 +18,12 @@
 [base_hybrid_kda_mhamoe_x] step   400 loss 1.5891 bp 0 256s
 [base_hybrid_kda_mhamoe_x] step   450 VAL bpc 2.4628
 [base_hybrid_kda_mhamoe_x] step   450 loss 1.6229 bp 0 288s
+[base_hybrid_kda_mhamoe_x] step   500 VAL bpc 2.4510
+[base_hybrid_kda_mhamoe_x] step   500 loss 1.4894 bp 0 319s
+[base_hybrid_kda_mhamoe_x] step   550 VAL bpc 2.4343
+[base_hybrid_kda_mhamoe_x] step   550 loss 1.4779 bp 0 349s
+[base_hybrid_kda_mhamoe_x] step   600 VAL bpc 2.4076
+[base_hybrid_kda_mhamoe_x] step   600 loss 1.4410 bp 0 380s
+[base_hybrid_kda_mhamoe_x] step   649 VAL bpc 2.3941
+[base_hybrid_kda_mhamoe_x] step   649 loss 1.4514 bp 0 411s
+[base_hybrid_kda_mhamoe_x] val_loss 1.6152 bpc 2.3302 (411s, 1,730,508 params)

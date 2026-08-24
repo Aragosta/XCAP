@@ -1,0 +1,129 @@
+{
+  "variant": "base_kda_dense",
+  "config": {
+    "name": "base_kda_dense",
+    "kind": "plain",
+    "mixer_h": "kda",
+    "ffn_h": "dense",
+    "mixer_l": "mha",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "note": "Plain 4-layer transformer with Kimi linear attention instead of MHA."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 12,
+  "steps": 700,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 926992,
+  "routed_expert_params": 0,
+  "active_params": 926992,
+  "final_train_loss": 1.3850313425064087,
+  "val_loss": 1.5401170670986175,
+  "val_bpc": 2.2219192550916302,
+  "val_ppl": 4.665136373002055,
+  "train_time_s": 952.5,
+  "eval_time_s": 7.9,
+  "tokens_per_s": 2257.5,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.663950443267822,
+      "bp_steps": 0,
+      "elapsed_s": 5.9
+    },
+    {
+      "step": 50,
+      "train_loss": 2.016245126724243,
+      "bp_steps": 0,
+      "elapsed_s": 76.7
+    },
+    {
+      "step": 100,
+      "train_loss": 1.7668466567993164,
+      "bp_steps": 0,
+      "elapsed_s": 144.1
+    },
+    {
+      "step": 150,
+      "train_loss": 1.6912745237350464,
+      "bp_steps": 0,
+      "elapsed_s": 211.6
+    },
+    {
+      "step": 200,
+      "train_loss": 1.5344732999801636,
+      "bp_steps": 0,
+      "elapsed_s": 279.1
+    },
+    {
+      "step": 250,
+      "train_loss": 1.5459853410720825,
+      "bp_steps": 0,
+      "elapsed_s": 345.0
+    },
+    {
+      "step": 300,
+      "train_loss": 1.5501303672790527,
+      "bp_steps": 0,
+      "elapsed_s": 412.0
+    },
+    {
+      "step": 350,
+      "train_loss": 1.4644042253494263,
+      "bp_steps": 0,
+      "elapsed_s": 477.7
+    },
+    {
+      "step": 400,
+      "train_loss": 1.3879400491714478,
+      "bp_steps": 0,
+      "elapsed_s": 545.3
+    },
+    {
+      "step": 450,
+      "train_loss": 1.4213069677352905,
+      "bp_steps": 0,
+      "elapsed_s": 612.6
+    },
+    {
+      "step": 500,
+      "train_loss": 1.3611003160476685,
+      "bp_steps": 0,
+      "elapsed_s": 679.2
+    },
+    {
+      "step": 550,
+      "train_loss": 1.3586230278015137,
+      "bp_steps": 0,
+      "elapsed_s": 749.8
+    },
+    {
+      "step": 600,
+      "train_loss": 1.3376795053482056,
+      "bp_steps": 0,
+      "elapsed_s": 815.5
+    },
+    {
+      "step": 650,
+      "train_loss": 1.42072594165802,
+      "bp_steps": 0,
+      "elapsed_s": 884.9
+    },
+    {
+      "step": 699,
+      "train_loss": 1.3850313425064087,
+      "bp_steps": 0,
+      "elapsed_s": 952.5
+    }
+  ],
+  "sample": "KING RICHARD:\nThou makes her self indectioes, and in the strength\nAs with that here he hath blecken stones him\nstands, your way, and comes are death,\nThat stand well you for me I meant the head and humbly\nRenect of"
+}

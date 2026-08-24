@@ -60,9 +60,12 @@ _V = [
     Variant("hrm_loop1_kda_mha", "hrm", mixer_h="mha", ffn_h="dense", mixer_l="kda", ffn_l="dense",
             H_cycles=1, L_cycles=2, bp_min_steps=2, bp_max_steps=3,
             note="Loop ladder H=1: a single HRM pass, i.e. no outer recurrence. Control for "
-                 "whether the looping does anything at all."),
+                 "whether the looping does anything at all. NOTE: with only 3 block "
+                 "applications, bp_max=3 backpropagates through all of them, so this rung "
+                 "also has a fuller gradient than the truncated H>=2 rungs -- structurally "
+                 "unavoidable, not a free parameter."),
     Variant("hrm_loop3_kda_mha", "hrm", mixer_h="mha", ffn_h="dense", mixer_l="kda", ffn_l="dense",
-            H_cycles=3, L_cycles=2, bp_min_steps=2, bp_max_steps=4,
+            H_cycles=3, L_cycles=2, bp_min_steps=2, bp_max_steps=5,
             note="Loop ladder H=3: fast(L)=Kimi linear, slow(H)=MHA."),
 
     # --- confound controls: the short causal conv ---------------------------

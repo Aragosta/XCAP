@@ -1,0 +1,129 @@
+{
+  "variant": "hrm_kda_dense",
+  "config": {
+    "name": "hrm_kda_dense",
+    "kind": "hrm",
+    "mixer_h": "kda",
+    "ffn_h": "dense",
+    "mixer_l": "kda",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "note": "#2 HRM, both levels = Kimi Delta Attention + SwiGLU."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 12,
+  "steps": 700,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 471816,
+  "routed_expert_params": 0,
+  "active_params": 471816,
+  "final_train_loss": 1.4621528387069702,
+  "val_loss": 1.57021507024765,
+  "val_bpc": 2.2653414949754,
+  "val_ppl": 4.8076820719668145,
+  "train_time_s": 1357.2,
+  "eval_time_s": 11.9,
+  "tokens_per_s": 1584.5,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.528273105621338,
+      "bp_steps": 2,
+      "elapsed_s": 3.7
+    },
+    {
+      "step": 50,
+      "train_loss": 2.1500442028045654,
+      "bp_steps": 2,
+      "elapsed_s": 56.5
+    },
+    {
+      "step": 100,
+      "train_loss": 1.893159031867981,
+      "bp_steps": 3,
+      "elapsed_s": 118.7
+    },
+    {
+      "step": 150,
+      "train_loss": 1.7718130350112915,
+      "bp_steps": 4,
+      "elapsed_s": 185.9
+    },
+    {
+      "step": 200,
+      "train_loss": 1.631320595741272,
+      "bp_steps": 4,
+      "elapsed_s": 265.5
+    },
+    {
+      "step": 250,
+      "train_loss": 1.6179553270339966,
+      "bp_steps": 5,
+      "elapsed_s": 354.5
+    },
+    {
+      "step": 300,
+      "train_loss": 1.5994879007339478,
+      "bp_steps": 5,
+      "elapsed_s": 442.0
+    },
+    {
+      "step": 350,
+      "train_loss": 1.5362015962600708,
+      "bp_steps": 5,
+      "elapsed_s": 581.6
+    },
+    {
+      "step": 400,
+      "train_loss": 1.4550050497055054,
+      "bp_steps": 5,
+      "elapsed_s": 676.1
+    },
+    {
+      "step": 450,
+      "train_loss": 1.4899920225143433,
+      "bp_steps": 5,
+      "elapsed_s": 803.4
+    },
+    {
+      "step": 500,
+      "train_loss": 1.418617606163025,
+      "bp_steps": 5,
+      "elapsed_s": 893.8
+    },
+    {
+      "step": 550,
+      "train_loss": 1.446151614189148,
+      "bp_steps": 5,
+      "elapsed_s": 982.8
+    },
+    {
+      "step": 600,
+      "train_loss": 1.3828991651535034,
+      "bp_steps": 5,
+      "elapsed_s": 1075.6
+    },
+    {
+      "step": 650,
+      "train_loss": 1.460658073425293,
+      "bp_steps": 5,
+      "elapsed_s": 1194.7
+    },
+    {
+      "step": 699,
+      "train_loss": 1.4621528387069702,
+      "bp_steps": 5,
+      "elapsed_s": 1357.2
+    }
+  ],
+  "sample": "KING RICHARD:\nThy father have not slow a means! which gelsest Mencused,\nOr name and hear think o'er suit of death.\n\nCLARENCE:\nWhy, and send the earness faith.\nA well you for me his head, do escovers up the created "
+}

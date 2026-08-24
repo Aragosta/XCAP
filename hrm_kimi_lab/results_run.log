@@ -8,3 +8,5 @@ done   hrm_mha_moe rc=0 (780s elapsed)
 launch hrm_kda_dense
 done   base_kda_dense rc=0 (975s elapsed)
 launch hrm_loop5_kda_mhamoe
+done   hrm_kda_dense rc=0 (2165s elapsed)
+launch hrm_mha_dense

@@ -133,13 +133,15 @@ class Block(nn.Module):
 class Stack(nn.Module):
     """A stack of blocks + its own RoPE table (upstream `Transformer`)."""
 
-    def __init__(self, cfg: BlockConfig, n_layers: int):
+    def __init__(self, cfg: BlockConfig, n_layers: int, cfgs: Optional[list] = None):
         super().__init__()
         self.cfg = cfg
-        self.needs_rope = cfg.mixer == "mha"
+        layer_cfgs = cfgs if cfgs is not None else [cfg] * n_layers
+        # KDA ignores cos_sin; build the RoPE table if any layer is softmax attention.
+        self.needs_rope = any(c.mixer == "mha" for c in layer_cfgs)
         if self.needs_rope:
             self.rotary_emb = RotaryEmbedding(cfg.head_dim, cfg.max_seq_len, cfg.rope_theta)
-        self.layers = nn.ModuleList([Block(cfg) for _ in range(n_layers)])
+        self.layers = nn.ModuleList([Block(c) for c in layer_cfgs])
 
     def forward(self, x: Tensor) -> Tensor:
         cos_sin = self.rotary_emb(x.shape[1]) if self.needs_rope else None

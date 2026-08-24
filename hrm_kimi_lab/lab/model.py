@@ -64,17 +64,51 @@ class HRMCore(nn.Module):
 
 
 class PlainCore(nn.Module):
-    """Non-recurrent transformer baseline."""
+    """Non-recurrent transformer baseline; layers may be heterogeneous."""
 
-    def __init__(self, cfg: BlockConfig, n_layers: int):
+    def __init__(self, cfg: BlockConfig, n_layers: int, cfgs=None):
         super().__init__()
-        self.stack = Stack(cfg, n_layers)
+        self.stack = Stack(cfg, n_layers, cfgs=cfgs)
 
     def bp_steps_for(self, step: int, total_steps: int) -> int:
         return 0
 
     def forward(self, x: Tensor, bp_steps: int = 0) -> Tensor:
         return self.stack(x)
+
+
+class StackedCore(nn.Module):
+    """N HRM modules, each followed by a full-attention block.
+
+    This is the Kimi-K3 hybrid-backbone idea (mostly linear attention with
+    periodic full attention) applied at the level of HRM modules: the KDA
+    recurrence does the local work inside each module, and a softmax MHA(+MoE)
+    layer mixes globally *over* the module outputs. Each module has its own
+    parameters -- unlike the H/L cycles, these are not shared.
+    """
+
+    def __init__(self, hrm_cfg_h: BlockConfig, hrm_cfg_l: BlockConfig, top_cfg: BlockConfig,
+                 n_modules: int, H_cycles: int, L_cycles: int,
+                 h_layers: int = 1, l_layers: int = 1, top_layers: int = 1,
+                 bp_min_steps: int = 2, bp_max_steps: int = 5, bp_warmup_ratio: float = 0.3):
+        super().__init__()
+        self.modules_ = nn.ModuleList([
+            HRMCore(hrm_cfg_h, hrm_cfg_l, H_cycles, L_cycles, h_layers, l_layers,
+                    bp_min_steps=bp_min_steps, bp_max_steps=bp_max_steps,
+                    bp_warmup_ratio=bp_warmup_ratio)
+            for _ in range(n_modules)
+        ])
+        self.tops = nn.ModuleList([Stack(top_cfg, top_layers) for _ in range(n_modules)])
+        self.bp_min_steps, self.bp_max_steps = bp_min_steps, bp_max_steps
+        self.bp_warmup_ratio = bp_warmup_ratio
+
+    def bp_steps_for(self, step: int, total_steps: int) -> int:
+        return self.modules_[0].bp_steps_for(step, total_steps)
+
+    def forward(self, x: Tensor, bp_steps: int = 2) -> Tensor:
+        for hrm, top in zip(self.modules_, self.tops):
+            x = top(hrm(x, bp_steps=bp_steps))
+        return x
 
 
 class LM(nn.Module):
@@ -102,12 +136,17 @@ class LM(nn.Module):
 @dataclass
 class Variant:
     name: str
-    kind: Literal["plain", "hrm"]
+    kind: Literal["plain", "hrm", "stacked"]
     mixer_h: str = "mha"
     ffn_h: str = "dense"
     mixer_l: str = "mha"
     ffn_l: str = "dense"
     n_layers: int = 4          # plain only
+    mixer_top: str = "mha"     # stacked only: the full-attention layer over each HRM module
+    ffn_top: str = "moe"
+    n_modules: int = 1
+    top_layers: int = 1
+    pattern: tuple = ()        # plain only: per-layer "mixer:ffn", e.g. ("kda:dense", "mha:moe")
     h_layers: int = 1
     l_layers: int = 1
     H_cycles: int = 2
@@ -121,19 +160,39 @@ class Variant:
     def block_applications(self) -> int:
         """Block forward passes per token, per model forward (compute proxy)."""
         if self.kind == "plain":
-            return self.n_layers
-        return self.H_cycles * (self.L_cycles * self.l_layers + self.h_layers)
+            return len(self.pattern) or self.n_layers
+        per_hrm = self.H_cycles * (self.L_cycles * self.l_layers + self.h_layers)
+        if self.kind == "hrm":
+            return per_hrm
+        return self.n_modules * (per_hrm + self.top_layers)
 
     @property
     def unique_blocks(self) -> int:
-        return self.n_layers if self.kind == "plain" else self.h_layers + self.l_layers
+        if self.kind == "plain":
+            return len(self.pattern) or self.n_layers
+        if self.kind == "hrm":
+            return self.h_layers + self.l_layers
+        return self.n_modules * (self.h_layers + self.l_layers + self.top_layers)
 
 
 def build(variant: Variant, vocab_size: int, base: BlockConfig) -> LM:
     base = replace(base, **variant.cfg_overrides)
     if variant.kind == "plain":
         cfg = replace(base, mixer=variant.mixer_h, ffn=variant.ffn_h)
-        core = PlainCore(cfg, variant.n_layers)
+        cfgs = None
+        if variant.pattern:
+            cfgs = [replace(base, mixer=spec.split(":")[0], ffn=spec.split(":")[1])
+                    for spec in variant.pattern]
+        core = PlainCore(cfg, variant.n_layers, cfgs=cfgs)
+    elif variant.kind == "stacked":
+        core = StackedCore(
+            replace(base, mixer=variant.mixer_h, ffn=variant.ffn_h),
+            replace(base, mixer=variant.mixer_l, ffn=variant.ffn_l),
+            replace(base, mixer=variant.mixer_top, ffn=variant.ffn_top),
+            variant.n_modules, variant.H_cycles, variant.L_cycles,
+            variant.h_layers, variant.l_layers, variant.top_layers,
+            bp_min_steps=variant.bp_min_steps, bp_max_steps=variant.bp_max_steps,
+        )
     else:
         h_cfg = replace(base, mixer=variant.mixer_h, ffn=variant.ffn_h)
         l_cfg = replace(base, mixer=variant.mixer_l, ffn=variant.ffn_l)

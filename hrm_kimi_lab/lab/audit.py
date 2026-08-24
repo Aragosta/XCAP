@@ -50,7 +50,8 @@ if __name__ == "__main__":
             print(f"  {label:34s} past {past:.2e}   future {future:.2e} (should be large)")
 
     print("== full-model causality: flip the LAST token, earlier logits must not move ==")
-    for name in ("base_kda_dense", "hrm_kda_dense", "hrm_loop5_kda_mhamoe", "base_mha_dense"):
+    for name in ("base_kda_dense", "hrm_kda_dense", "hrm_loop5_kda_mhamoe", "base_mha_dense",
+                 "hrm_kda_x2_mhamoe", "base_hybrid_kda_mhamoe", "hrm_hybrid_kda_mha"):
         print(f"  {name:22s} max |delta| {lm_causality(name):.2e}")
 
     print("== KDA chunkwise vs recurrent (same weights, same input) ==")

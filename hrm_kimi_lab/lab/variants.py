@@ -68,6 +68,30 @@ _V = [
             H_cycles=3, L_cycles=2, bp_min_steps=2, bp_max_steps=5,
             note="Loop ladder H=3: fast(L)=Kimi linear, slow(H)=MHA."),
 
+    # --- KDA inside, softmax attention over the modules --------------------
+    # Kimi K3's hybrid backbone idea (mostly linear attention, periodic full
+    # attention) applied at HRM-module granularity: the KDA recurrence does the
+    # local work, an MHA(+MoE) layer mixes globally over each module's output.
+    Variant("hrm_kda_x1_mhamoe", "stacked", mixer_h="kda", ffn_h="dense",
+            mixer_l="kda", ffn_l="dense", mixer_top="mha", ffn_top="moe",
+            n_modules=1, H_cycles=2, L_cycles=2,
+            note="One all-KDA HRM module (KDA in both H and L) with an MHA+MoE layer on top."),
+    Variant("hrm_kda_x2_mhamoe", "stacked", mixer_h="kda", ffn_h="dense",
+            mixer_l="kda", ffn_l="dense", mixer_top="mha", ffn_top="moe",
+            n_modules=2, H_cycles=2, L_cycles=2,
+            note="Two all-KDA HRM modules, each followed by an MHA+MoE layer: softmax "
+                 "attention over multiple HRM modules. 14 blocks/fwd, close to the "
+                 "5-loop variants' 15, so the two are roughly compute-comparable."),
+    Variant("hrm_kda_x2_mhadense", "stacked", mixer_h="kda", ffn_h="dense",
+            mixer_l="kda", ffn_l="dense", mixer_top="mha", ffn_top="dense",
+            n_modules=2, H_cycles=2, L_cycles=2,
+            note="Same, dense FFN on the top layers -- isolates the MoE's contribution."),
+    Variant("base_hybrid_kda_mhamoe", "plain",
+            pattern=("kda:dense", "kda:dense", "kda:dense", "mha:moe"),
+            note="No HRM at all: Kimi's 3:1 linear/full-attention stack (3 KDA layers, "
+                 "1 MHA+MoE layer). The honest 'good thing' to beat -- same idea without "
+                 "the recurrence."),
+
     # --- confound controls: the short causal conv ---------------------------
     # KDA carries a kernel-4 causal conv on q/k/v that HRM-Text's MHA does not.
     # These two isolate it: take it away from KDA, and give it to MHA.

@@ -1,0 +1,137 @@
+{
+  "variant": "hrm_loop5_kda_mha",
+  "config": {
+    "name": "hrm_loop5_kda_mha",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "dense",
+    "mixer_l": "kda",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 5,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "cfg_overrides": {},
+    "note": "#5 5 outer loops: fast(L)=Kimi linear, slow(H)=MHA, both dense -- the dense twin of #3, isolating MoE."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 12,
+  "steps": 700,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 461316,
+  "routed_expert_params": 0,
+  "active_params": 461316,
+  "block_applications": 15,
+  "unique_blocks": 2,
+  "final_train_loss": 1.5883280038833618,
+  "val_loss": 1.6874870657920837,
+  "val_bpc": 2.4345292213825074,
+  "val_ppl": 5.405879003925973,
+  "train_time_s": 929.6,
+  "eval_time_s": 19.6,
+  "tokens_per_s": 2313.2,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.683866024017334,
+      "bp_steps": 2,
+      "elapsed_s": 1.5
+    },
+    {
+      "step": 50,
+      "train_loss": 2.3296220302581787,
+      "bp_steps": 2,
+      "elapsed_s": 63.0
+    },
+    {
+      "step": 100,
+      "train_loss": 2.092694044113159,
+      "bp_steps": 3,
+      "elapsed_s": 124.5
+    },
+    {
+      "step": 150,
+      "train_loss": 1.9663910865783691,
+      "bp_steps": 4,
+      "elapsed_s": 186.6
+    },
+    {
+      "step": 200,
+      "train_loss": 1.791367530822754,
+      "bp_steps": 4,
+      "elapsed_s": 250.6
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7697253227233887,
+      "bp_steps": 5,
+      "elapsed_s": 316.4
+    },
+    {
+      "step": 300,
+      "train_loss": 1.7268563508987427,
+      "bp_steps": 5,
+      "elapsed_s": 382.6
+    },
+    {
+      "step": 350,
+      "train_loss": 1.6781262159347534,
+      "bp_steps": 5,
+      "elapsed_s": 450.4
+    },
+    {
+      "step": 400,
+      "train_loss": 1.5731902122497559,
+      "bp_steps": 5,
+      "elapsed_s": 518.0
+    },
+    {
+      "step": 450,
+      "train_loss": 1.6219321489334106,
+      "bp_steps": 5,
+      "elapsed_s": 585.5
+    },
+    {
+      "step": 500,
+      "train_loss": 1.541967511177063,
+      "bp_steps": 5,
+      "elapsed_s": 653.5
+    },
+    {
+      "step": 550,
+      "train_loss": 1.5951666831970215,
+      "bp_steps": 5,
+      "elapsed_s": 720.1
+    },
+    {
+      "step": 600,
+      "train_loss": 1.5180813074111938,
+      "bp_steps": 5,
+      "elapsed_s": 790.3
+    },
+    {
+      "step": 650,
+      "train_loss": 1.566203236579895,
+      "bp_steps": 5,
+      "elapsed_s": 861.2
+    },
+    {
+      "step": 699,
+      "train_loss": 1.5883280038833618,
+      "bp_steps": 5,
+      "elapsed_s": 929.6
+    }
+  ],
+  "sample": "KING RICHARD:\nThy farman her selffel Had never by infigels,\nBearing, with that here hear think of lives.\n\nLADY GREY:\nWell reignd that their die true of him thee we will not\ni'en in his gainted of the writh and. So "
+}

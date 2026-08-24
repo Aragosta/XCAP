@@ -1,0 +1,161 @@
+{
+  "variant": "hrm_loop5_kda_mhamoe_fullbp",
+  "config": {
+    "name": "hrm_loop5_kda_mhamoe_fullbp",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "kda",
+    "ffn_l": "moe",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 5,
+    "L_cycles": 2,
+    "bp_min_steps": 15,
+    "bp_max_steps": 15,
+    "cfg_overrides": {},
+    "note": "The 5-loop version of the above with gradients through all 15 applications: does looping to 5 help once truncation is removed?"
+  },
+  "hidden_size": 96,
+  "num_heads": 4,
+  "seq_len": 192,
+  "batch_size": 8,
+  "steps": 650,
+  "lr": 0.003,
+  "seed": 1,
+  "total_params": 868324,
+  "routed_expert_params": 589824,
+  "active_params": 425956,
+  "block_applications": 15,
+  "bp_steps_final": 15,
+  "grad_coverage": 1.0,
+  "unique_blocks": 2,
+  "final_train_loss": 1.5716261863708496,
+  "val_loss": 1.6891667187213897,
+  "val_bpc": 2.4369524483340315,
+  "val_ppl": 5.414966634326375,
+  "train_time_s": 1591.0,
+  "eval_time_s": 14.3,
+  "tokens_per_s": 627.5,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.683091163635254,
+      "bp_steps": 15,
+      "elapsed_s": 4.6,
+      "val_loss": 4.647505283355713,
+      "val_bpc": 6.704932824802544
+    },
+    {
+      "step": 50,
+      "train_loss": 2.1929478645324707,
+      "bp_steps": 15,
+      "elapsed_s": 123.7,
+      "val_loss": 2.2912686467170715,
+      "val_bpc": 3.3056019139630854
+    },
+    {
+      "step": 100,
+      "train_loss": 1.9642244577407837,
+      "bp_steps": 15,
+      "elapsed_s": 243.9,
+      "val_loss": 2.14005184173584,
+      "val_bpc": 3.087442179317589
+    },
+    {
+      "step": 150,
+      "train_loss": 1.9243358373641968,
+      "bp_steps": 15,
+      "elapsed_s": 366.5,
+      "val_loss": 2.046406462788582,
+      "val_bpc": 2.952340455508212
+    },
+    {
+      "step": 200,
+      "train_loss": 1.8242536783218384,
+      "bp_steps": 15,
+      "elapsed_s": 485.4,
+      "val_loss": 1.9723601043224335,
+      "val_bpc": 2.8455141413532132
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7910714149475098,
+      "bp_steps": 15,
+      "elapsed_s": 607.0,
+      "val_loss": 1.9261100143194199,
+      "val_bpc": 2.7787893658651974
+    },
+    {
+      "step": 300,
+      "train_loss": 1.646530032157898,
+      "bp_steps": 15,
+      "elapsed_s": 730.3,
+      "val_loss": 1.8935444205999374,
+      "val_bpc": 2.7318071453024952
+    },
+    {
+      "step": 350,
+      "train_loss": 1.7439953088760376,
+      "bp_steps": 15,
+      "elapsed_s": 849.9,
+      "val_loss": 1.876663327217102,
+      "val_bpc": 2.7074528755942953
+    },
+    {
+      "step": 400,
+      "train_loss": 1.6647874116897583,
+      "bp_steps": 15,
+      "elapsed_s": 975.2,
+      "val_loss": 1.8308172076940536,
+      "val_bpc": 2.6413109063143905
+    },
+    {
+      "step": 450,
+      "train_loss": 1.6037449836730957,
+      "bp_steps": 15,
+      "elapsed_s": 1095.8,
+      "val_loss": 1.7967948913574219,
+      "val_bpc": 2.5922270792559763
+    },
+    {
+      "step": 500,
+      "train_loss": 1.616128921508789,
+      "bp_steps": 15,
+      "elapsed_s": 1221.3,
+      "val_loss": 1.783378705382347,
+      "val_bpc": 2.572871614282092
+    },
+    {
+      "step": 550,
+      "train_loss": 1.5711922645568848,
+      "bp_steps": 15,
+      "elapsed_s": 1343.5,
+      "val_loss": 1.75176602602005,
+      "val_bpc": 2.527264158536893
+    },
+    {
+      "step": 600,
+      "train_loss": 1.4694619178771973,
+      "bp_steps": 15,
+      "elapsed_s": 1463.9,
+      "val_loss": 1.7330694198608398,
+      "val_bpc": 2.5002906575495465
+    },
+    {
+      "step": 649,
+      "train_loss": 1.5716261863708496,
+      "bp_steps": 15,
+      "elapsed_s": 1585.2,
+      "val_loss": 1.7275952696800232,
+      "val_bpc": 2.492393128230601
+    }
+  ],
+  "sample": "KING RICHARD:\nThy for this when the dead means by your tree,\nAnd of thy hearty here hath the seepers!\nThe hands that's your wake that their did trunk; my father?\n\nAUTOLYCUS:\n'Tis it to the heaven the wretch no.\n\nSI"
+}

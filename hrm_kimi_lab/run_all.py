@@ -12,6 +12,8 @@ def main():
     p.add_argument("--batch-size", type=int, default=12)
     p.add_argument("--seq-len", type=int, default=256)
     p.add_argument("--lr", type=float, default=3e-3)
+    p.add_argument("--hidden", type=int, default=128)
+    p.add_argument("--heads", type=int, default=4)
     p.add_argument("--seeds", type=int, nargs="+", default=[0])
     p.add_argument("--jobs", type=int, default=2)
     p.add_argument("--threads", type=int, default=2)
@@ -33,6 +35,7 @@ def main():
             cmd = [sys.executable, "-m", "lab.train", name, "--steps", str(a.steps),
                    "--batch-size", str(a.batch_size), "--seq-len", str(a.seq_len),
                    "--lr", str(a.lr), "--seed", str(seed), "--threads", str(a.threads),
+                   "--hidden", str(a.hidden), "--heads", str(a.heads),
                    "--out", str(ROOT / a.out), "--eval-every", str(a.eval_every)]
             log = open(logs / f"{tag}.log", "w")
             name = tag

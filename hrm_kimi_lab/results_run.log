@@ -4,3 +4,5 @@ done   base_mha_dense rc=0 (130s elapsed)
 launch base_mha_moe
 done   base_mha_moe rc=0 (420s elapsed)
 launch hrm_mha_moe
+done   hrm_mha_moe rc=0 (780s elapsed)
+launch hrm_kda_dense

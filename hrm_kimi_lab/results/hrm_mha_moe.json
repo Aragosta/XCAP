@@ -1,0 +1,129 @@
+{
+  "variant": "hrm_mha_moe",
+  "config": {
+    "name": "hrm_mha_moe",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "mha",
+    "ffn_l": "moe",
+    "n_layers": 4,
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "note": "#1 HRM, both levels = MHA + MoE."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 12,
+  "steps": 700,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 1567104,
+  "routed_expert_params": 1081344,
+  "active_params": 756096,
+  "final_train_loss": 1.4558097124099731,
+  "val_loss": 1.559864228963852,
+  "val_bpc": 2.2504083875862357,
+  "val_ppl": 4.758175178906092,
+  "train_time_s": 344.1,
+  "eval_time_s": 3.9,
+  "tokens_per_s": 6250.1,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.698728084564209,
+      "bp_steps": 2,
+      "elapsed_s": 0.4
+    },
+    {
+      "step": 50,
+      "train_loss": 2.3881759643554688,
+      "bp_steps": 2,
+      "elapsed_s": 17.5
+    },
+    {
+      "step": 100,
+      "train_loss": 2.07847261428833,
+      "bp_steps": 3,
+      "elapsed_s": 36.6
+    },
+    {
+      "step": 150,
+      "train_loss": 1.8739933967590332,
+      "bp_steps": 4,
+      "elapsed_s": 57.2
+    },
+    {
+      "step": 200,
+      "train_loss": 1.6697629690170288,
+      "bp_steps": 4,
+      "elapsed_s": 80.3
+    },
+    {
+      "step": 250,
+      "train_loss": 1.6370753049850464,
+      "bp_steps": 5,
+      "elapsed_s": 106.3
+    },
+    {
+      "step": 300,
+      "train_loss": 1.6073588132858276,
+      "bp_steps": 5,
+      "elapsed_s": 132.2
+    },
+    {
+      "step": 350,
+      "train_loss": 1.5316177606582642,
+      "bp_steps": 5,
+      "elapsed_s": 158.3
+    },
+    {
+      "step": 400,
+      "train_loss": 1.466436743736267,
+      "bp_steps": 5,
+      "elapsed_s": 184.4
+    },
+    {
+      "step": 450,
+      "train_loss": 1.4933347702026367,
+      "bp_steps": 5,
+      "elapsed_s": 210.2
+    },
+    {
+      "step": 500,
+      "train_loss": 1.4214401245117188,
+      "bp_steps": 5,
+      "elapsed_s": 237.1
+    },
+    {
+      "step": 550,
+      "train_loss": 1.4377012252807617,
+      "bp_steps": 5,
+      "elapsed_s": 263.3
+    },
+    {
+      "step": 600,
+      "train_loss": 1.3730249404907227,
+      "bp_steps": 5,
+      "elapsed_s": 290.9
+    },
+    {
+      "step": 650,
+      "train_loss": 1.4738441705703735,
+      "bp_steps": 5,
+      "elapsed_s": 317.9
+    },
+    {
+      "step": 699,
+      "train_loss": 1.4558097124099731,
+      "bp_steps": 5,
+      "elapsed_s": 344.1
+    }
+  ],
+  "sample": "KING RICHARD:\nThou must know self me one means your from strenge\nof thy hours been change of seements of serve\nWe are the reign well.\n\nKING EDWARD IV:\nWhat thou we wilt to accuse of Edward he contranch.\n\nSecond Ser"
+}

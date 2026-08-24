@@ -12,3 +12,5 @@
 [hrm_loop5_kda_mhamoe_fullbp] step   250 loss 1.7827 bp 15 938s
 [hrm_loop5_kda_mhamoe_fullbp] step   300 VAL bpc 2.7410
 [hrm_loop5_kda_mhamoe_fullbp] step   300 loss 1.5285 bp 15 1067s
+[hrm_loop5_kda_mhamoe_fullbp] step   350 VAL bpc 2.6500
+[hrm_loop5_kda_mhamoe_fullbp] step   350 loss 1.6529 bp 15 1194s

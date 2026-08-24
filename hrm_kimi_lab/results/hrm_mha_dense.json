@@ -1,0 +1,137 @@
+{
+  "variant": "hrm_mha_dense",
+  "config": {
+    "name": "hrm_mha_dense",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "dense",
+    "mixer_l": "mha",
+    "ffn_l": "dense",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 2,
+    "L_cycles": 2,
+    "bp_min_steps": 2,
+    "bp_max_steps": 5,
+    "cfg_overrides": {},
+    "note": "#4a HRM control: MHA + dense, isolates the MoE contribution."
+  },
+  "hidden_size": 128,
+  "num_heads": 4,
+  "seq_len": 256,
+  "batch_size": 12,
+  "steps": 700,
+  "lr": 0.003,
+  "seed": 0,
+  "total_params": 450816,
+  "routed_expert_params": 0,
+  "active_params": 450816,
+  "block_applications": 6,
+  "unique_blocks": 2,
+  "final_train_loss": 1.5114498138427734,
+  "val_loss": 1.6165318727493285,
+  "val_bpc": 2.3321625162544053,
+  "val_ppl": 5.035595910285549,
+  "train_time_s": 146.0,
+  "eval_time_s": 1.5,
+  "tokens_per_s": 14728.0,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.743287563323975,
+      "bp_steps": 2,
+      "elapsed_s": 0.2
+    },
+    {
+      "step": 50,
+      "train_loss": 2.361042022705078,
+      "bp_steps": 2,
+      "elapsed_s": 7.3
+    },
+    {
+      "step": 100,
+      "train_loss": 2.0517399311065674,
+      "bp_steps": 3,
+      "elapsed_s": 15.0
+    },
+    {
+      "step": 150,
+      "train_loss": 1.890323281288147,
+      "bp_steps": 4,
+      "elapsed_s": 23.6
+    },
+    {
+      "step": 200,
+      "train_loss": 1.6967326402664185,
+      "bp_steps": 4,
+      "elapsed_s": 33.5
+    },
+    {
+      "step": 250,
+      "train_loss": 1.6831039190292358,
+      "bp_steps": 5,
+      "elapsed_s": 44.5
+    },
+    {
+      "step": 300,
+      "train_loss": 1.64911949634552,
+      "bp_steps": 5,
+      "elapsed_s": 55.7
+    },
+    {
+      "step": 350,
+      "train_loss": 1.5826317071914673,
+      "bp_steps": 5,
+      "elapsed_s": 67.1
+    },
+    {
+      "step": 400,
+      "train_loss": 1.5060044527053833,
+      "bp_steps": 5,
+      "elapsed_s": 78.4
+    },
+    {
+      "step": 450,
+      "train_loss": 1.5337508916854858,
+      "bp_steps": 5,
+      "elapsed_s": 89.4
+    },
+    {
+      "step": 500,
+      "train_loss": 1.4725126028060913,
+      "bp_steps": 5,
+      "elapsed_s": 101.1
+    },
+    {
+      "step": 550,
+      "train_loss": 1.493095874786377,
+      "bp_steps": 5,
+      "elapsed_s": 112.7
+    },
+    {
+      "step": 600,
+      "train_loss": 1.4375101327896118,
+      "bp_steps": 5,
+      "elapsed_s": 123.8
+    },
+    {
+      "step": 650,
+      "train_loss": 1.5106006860733032,
+      "bp_steps": 5,
+      "elapsed_s": 134.7
+    },
+    {
+      "step": 699,
+      "train_loss": 1.5114498138427734,
+      "bp_steps": 5,
+      "elapsed_s": 146.0
+    }
+  ],
+  "sample": "KING RICHARD:\nThy farmed here your looks of hangrace.\n\nAls I great your hount bear? he hath blest\nFor many he the peace to his perceives in\nAnd trunk-day fits of the stone.\n\nSecond Georged the hands up the creaSh a"
+}

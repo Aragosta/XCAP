@@ -34,6 +34,7 @@ def main():
             "bpc_all": sorted(bpcs),
             "total_params": r0["total_params"], "active_params": r0["active_params"],
             "blocks": r0.get("block_applications"), "unique": r0.get("unique_blocks"),
+            "grad": r0.get("grad_coverage"),
             "tok_s": r0["tokens_per_s"], "train_s": r0["train_time_s"],
             "sample": r0["sample"],
         })
@@ -47,15 +48,19 @@ def main():
            f"({r0['steps']*r0['batch_size']*r0['seq_len']:,} tokens — identical budget for every "
            f"variant), lr={r0['lr']}. CPU only.", "",
            "`blocks/fwd` = block forward passes per token per model forward (compute proxy); "
-           "`unique` = distinct blocks holding parameters. HRM trades the second for the first.", "",
-           "| Variant | Val bits/char | seeds | Params | Active | blocks/fwd | unique | tok/s | Train s |",
-           "|---|---|---|---|---|---|---|---|---|"]
+           "`unique` = distinct blocks holding parameters; `grad cov` = fraction of those block "
+           "applications that receive gradients at the end of training. HRM's 1-step gradient "
+           "buys O(1) memory at the cost of grad cov < 1, so recurrent rows are not gradient-"
+           "comparable to the plain baselines (grad cov 1.00) -- the `*_fullbp` twins are.", "",
+           "| Variant | Val bits/char | seeds | Params | Active | blocks/fwd | unique | grad cov | tok/s | Train s |",
+           "|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         bpc = f"**{r['bpc_mean']:.4f}**"
         if r["bpc_sd"] is not None:
             bpc += f" ±{r['bpc_sd']:.4f}"
         out.append(f"| {r['variant']} | {bpc} | {r['n_seeds']} | {r['total_params']:,} | "
                    f"{r['active_params']:,} | {r['blocks']} | {r['unique']} | "
+                   f"{'—' if r['grad'] is None else format(r['grad'], '.2f')} | "
                    f"{r['tok_s']:,.0f} | {r['train_s']:.0f} |")
 
     out += ["", "## What each variant is", ""]

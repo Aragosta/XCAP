@@ -92,6 +92,26 @@ _V = [
                  "1 MHA+MoE layer). The honest 'good thing' to beat -- same idea without "
                  "the recurrence."),
 
+    # --- gradient-truncation controls -------------------------------------
+    # Upstream HRM trains with a 1-step gradient: only the last bp_steps block
+    # applications are in the graph (that is what buys O(1) memory). Against a
+    # baseline that backprops through all of its compute, that confounds "more
+    # loops" with "less gradient". These twins set bp_steps = every application,
+    # so recurrence can be judged without the truncation.
+    Variant("hrm_mha_dense_fullbp", "hrm", mixer_h="mha", ffn_h="dense",
+            mixer_l="mha", ffn_l="dense", H_cycles=2, L_cycles=2,
+            bp_min_steps=6, bp_max_steps=6,
+            note="hrm_mha_dense with gradients through all 6 block applications."),
+    Variant("hrm_hybrid_kda_mha_fullbp", "hrm", mixer_h="mha", ffn_h="dense",
+            mixer_l="kda", ffn_l="dense", H_cycles=2, L_cycles=2,
+            bp_min_steps=6, bp_max_steps=6,
+            note="hrm_hybrid_kda_mha with gradients through all 6 block applications."),
+    Variant("hrm_loop5_kda_mha_fullbp", "hrm", mixer_h="mha", ffn_h="dense",
+            mixer_l="kda", ffn_l="dense", H_cycles=5, L_cycles=2,
+            bp_min_steps=15, bp_max_steps=15,
+            note="hrm_loop5_kda_mha with gradients through all 15 block applications -- "
+                 "the honest test of whether 5 loops help, separated from truncation."),
+
     # --- confound controls: the short causal conv ---------------------------
     # KDA carries a kernel-4 causal conv on q/k/v that HRM-Text's MHA does not.
     # These two isolate it: take it away from KDA, and give it to MHA.

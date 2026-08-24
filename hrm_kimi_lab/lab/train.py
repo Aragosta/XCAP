@@ -84,6 +84,7 @@ def run(variant_name: str, steps: int, batch_size: int, seq_len: int, hidden: in
                   f"{time.time()-t0:.0f}s", flush=True)
     train_time = time.time() - t0
 
+    bp_final = model.core.bp_steps_for(steps - 1, steps)
     t1 = time.time()
     val_loss = evaluate(model, data, batch_size, seq_len, eval_iters)
     result = {
@@ -93,6 +94,9 @@ def run(variant_name: str, steps: int, batch_size: int, seq_len: int, hidden: in
         "batch_size": batch_size, "steps": steps, "lr": lr, "seed": seed,
         **stats,
         "block_applications": variant.block_applications,
+        "bp_steps_final": bp_final,
+        "grad_coverage": round(min(bp_final, variant.block_applications) / variant.block_applications, 3)
+        if variant.kind != "plain" else 1.0,
         "unique_blocks": variant.unique_blocks,
         "final_train_loss": history[-1]["train_loss"],
         "val_loss": val_loss,

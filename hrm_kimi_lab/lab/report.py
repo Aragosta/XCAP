@@ -5,21 +5,43 @@ from pathlib import Path
 from lab.variants import VARIANTS
 
 
+SIG_KEYS = ("steps", "batch_size", "seq_len", "hidden_size", "num_heads", "lr")
+
+
 def load(results: Path):
-    runs = {}
+    """Load results, refusing to put runs of different budgets in one table.
+
+    A run left over from an earlier configuration is not comparable to the
+    others, and silently averaging it in is exactly how a sweep lies. Anything
+    whose budget signature is not the majority one is dropped loudly.
+    """
+    runs, sigs = {}, {}
     for f in sorted(results.glob("*.json")):
         if f.name == "loop_scaling.json":
             continue
         r = json.loads(f.read_text())
-        runs.setdefault(r["variant"], []).append(r)
-    return runs
+        sig = tuple(r[k] for k in SIG_KEYS)
+        sigs.setdefault(sig, []).append((f.name, r))
+    if not sigs:
+        return {}, []
+    main = max(sigs, key=lambda k: len(sigs[k]))
+    dropped = []
+    for sig, entries in sigs.items():
+        for name, r in entries:
+            if sig == main:
+                runs.setdefault(r["variant"], []).append(r)
+            else:
+                dropped.append((name, dict(zip(SIG_KEYS, sig))))
+    return runs, dropped
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--results", type=Path, default=Path("results"))
     a = p.parse_args()
-    runs = load(a.results)
+    runs, dropped = load(a.results)
+    for name, sig in dropped:
+        print(f"EXCLUDED (budget mismatch): {name} {sig}")
     if not runs:
         print("no results yet"); return
 
@@ -63,6 +85,10 @@ def main():
                    f"{'—' if r['grad'] is None else format(r['grad'], '.2f')} | "
                    f"{r['tok_s']:,.0f} | {r['train_s']:.0f} |")
 
+    if dropped:
+        out += ["", "> Excluded from this table as not budget-comparable: " +
+                ", ".join(f"`{n}` ({s['steps']} steps, d={s['hidden_size']}, "
+                          f"seq={s['seq_len']})" for n, s in dropped)]
     out += ["", "## What each variant is", ""]
     for r in rows:
         out.append(f"- **{r['variant']}** — {VARIANTS[r['variant']].note}")

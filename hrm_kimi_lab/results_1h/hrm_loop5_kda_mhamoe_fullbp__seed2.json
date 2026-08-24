@@ -1,0 +1,161 @@
+{
+  "variant": "hrm_loop5_kda_mhamoe_fullbp",
+  "config": {
+    "name": "hrm_loop5_kda_mhamoe_fullbp",
+    "kind": "hrm",
+    "mixer_h": "mha",
+    "ffn_h": "moe",
+    "mixer_l": "kda",
+    "ffn_l": "moe",
+    "n_layers": 4,
+    "mixer_top": "mha",
+    "ffn_top": "moe",
+    "n_modules": 1,
+    "top_layers": 1,
+    "pattern": [],
+    "h_layers": 1,
+    "l_layers": 1,
+    "H_cycles": 5,
+    "L_cycles": 2,
+    "bp_min_steps": 15,
+    "bp_max_steps": 15,
+    "cfg_overrides": {},
+    "note": "The 5-loop version of the above with gradients through all 15 applications: does looping to 5 help once truncation is removed?"
+  },
+  "hidden_size": 96,
+  "num_heads": 4,
+  "seq_len": 192,
+  "batch_size": 8,
+  "steps": 650,
+  "lr": 0.003,
+  "seed": 2,
+  "total_params": 868324,
+  "routed_expert_params": 589824,
+  "active_params": 425956,
+  "block_applications": 15,
+  "bp_steps_final": 15,
+  "grad_coverage": 1.0,
+  "unique_blocks": 2,
+  "final_train_loss": 1.397417664527893,
+  "val_loss": 1.670767503976822,
+  "val_bpc": 2.4104079924657924,
+  "val_ppl": 5.316246472090439,
+  "train_time_s": 1669.1,
+  "eval_time_s": 15.5,
+  "tokens_per_s": 598.2,
+  "history": [
+    {
+      "step": 0,
+      "train_loss": 4.7854790687561035,
+      "bp_steps": 15,
+      "elapsed_s": 4.1,
+      "val_loss": 4.6499574184417725,
+      "val_bpc": 6.708470507930792
+    },
+    {
+      "step": 50,
+      "train_loss": 2.2319939136505127,
+      "bp_steps": 15,
+      "elapsed_s": 124.5,
+      "val_loss": 2.282359004020691,
+      "val_bpc": 3.2927480166289245
+    },
+    {
+      "step": 100,
+      "train_loss": 1.9475618600845337,
+      "bp_steps": 15,
+      "elapsed_s": 245.7,
+      "val_loss": 2.0864707827568054,
+      "val_bpc": 3.010141051242957
+    },
+    {
+      "step": 150,
+      "train_loss": 1.8919957876205444,
+      "bp_steps": 15,
+      "elapsed_s": 372.5,
+      "val_loss": 2.0014875531196594,
+      "val_bpc": 2.8875361672867186
+    },
+    {
+      "step": 200,
+      "train_loss": 1.800592064857483,
+      "bp_steps": 15,
+      "elapsed_s": 498.5,
+      "val_loss": 1.9603396952152252,
+      "val_bpc": 2.8281723567447874
+    },
+    {
+      "step": 250,
+      "train_loss": 1.7060407400131226,
+      "bp_steps": 15,
+      "elapsed_s": 627.8,
+      "val_loss": 1.9051963090896606,
+      "val_bpc": 2.74861726704361
+    },
+    {
+      "step": 300,
+      "train_loss": 1.6224297285079956,
+      "bp_steps": 15,
+      "elapsed_s": 756.8,
+      "val_loss": 1.8718588799238205,
+      "val_bpc": 2.7005215233100657
+    },
+    {
+      "step": 350,
+      "train_loss": 1.6749091148376465,
+      "bp_steps": 15,
+      "elapsed_s": 886.0,
+      "val_loss": 1.833269625902176,
+      "val_bpc": 2.6448489979014345
+    },
+    {
+      "step": 400,
+      "train_loss": 1.5624938011169434,
+      "bp_steps": 15,
+      "elapsed_s": 1017.5,
+      "val_loss": 1.8072602450847626,
+      "val_bpc": 2.6073253931795595
+    },
+    {
+      "step": 450,
+      "train_loss": 1.6320174932479858,
+      "bp_steps": 15,
+      "elapsed_s": 1154.0,
+      "val_loss": 1.7900418043136597,
+      "val_bpc": 2.5824844340672493
+    },
+    {
+      "step": 500,
+      "train_loss": 1.544693946838379,
+      "bp_steps": 15,
+      "elapsed_s": 1288.6,
+      "val_loss": 1.7655938565731049,
+      "val_bpc": 2.5472135011020383
+    },
+    {
+      "step": 550,
+      "train_loss": 1.5930668115615845,
+      "bp_steps": 15,
+      "elapsed_s": 1417.2,
+      "val_loss": 1.7288119494915009,
+      "val_bpc": 2.4941484261609697
+    },
+    {
+      "step": 600,
+      "train_loss": 1.4060511589050293,
+      "bp_steps": 15,
+      "elapsed_s": 1541.8,
+      "val_loss": 1.71669901907444,
+      "val_bpc": 2.4766731615176427
+    },
+    {
+      "step": 649,
+      "train_loss": 1.397417664527893,
+      "bp_steps": 15,
+      "elapsed_s": 1662.8,
+      "val_loss": 1.7078368365764618,
+      "val_bpc": 2.4638877347763564
+    }
+  ],
+  "sample": "KING RICHARD:\nThy fahful have not made a merrancy be would farewhom,\nBy his time rechion of one hells of the contunt\nWe portient exchens in earth, none have soon\nLeavy marraim which to the hear an shuwle\nIn ne. So "
+}

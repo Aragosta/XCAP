@@ -1,9 +1,0 @@
-[base_mha_dense] step     0 loss 4.7335 bp 0 0s
-[base_mha_dense] step    50 loss 2.3965 bp 0 9s
-[base_mha_dense] step   100 loss 2.1250 bp 0 18s
-[base_mha_dense] step   150 loss 1.9682 bp 0 27s
-[base_mha_dense] step   200 loss 1.7483 bp 0 35s
-[base_mha_dense] step   250 loss 1.7085 bp 0 44s
-[base_mha_dense] step   300 loss 1.6772 bp 0 52s
-[base_mha_dense] step   350 loss 1.5849 bp 0 61s
-[base_mha_dense] step   400 loss 1.4998 bp 0 69s

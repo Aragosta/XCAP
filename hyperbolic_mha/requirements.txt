@@ -1,0 +1,7 @@
+# Install torch from the default PyPI index. download.pytorch.org is blocked in
+# some sandboxes; the PyPI wheel works and resolves to a CPU-capable build.
+torch>=2.4
+numpy>=1.26
+scipy>=1.11
+matplotlib>=3.8
+pytest>=8.0

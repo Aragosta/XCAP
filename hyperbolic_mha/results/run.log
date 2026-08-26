@@ -1,0 +1,6 @@
+[euclidean] seed 0
+    step   175/700  train_ce 2.0979  val_bpb 2.8132  50s
+    step   350/700  train_ce 1.8334  val_bpb 2.4423  100s
+    step   525/700  train_ce 1.6428  val_bpb 2.2006  153s
+    step   700/700  train_ce 1.5276  val_bpb 2.0822  201s
+[euclidean] seed 1

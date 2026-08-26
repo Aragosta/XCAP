@@ -4,3 +4,23 @@
     step   525/700  train_ce 1.6428  val_bpb 2.2006  153s
     step   700/700  train_ce 1.5276  val_bpb 2.0822  201s
 [euclidean] seed 1
+    step   175/700  train_ce 1.9962  val_bpb 2.7768  50s
+    step   350/700  train_ce 1.7452  val_bpb 2.3774  97s
+    step   525/700  train_ce 1.5798  val_bpb 2.1537  144s
+    step   700/700  train_ce 1.5433  val_bpb 2.0413  191s
+[euclidean] seed 2
+    step   175/700  train_ce 1.9739  val_bpb 2.6764  48s
+    step   350/700  train_ce 1.7025  val_bpb 2.3018  96s
+    step   525/700  train_ce 1.5509  val_bpb 2.0806  146s
+    step   700/700  train_ce 1.4610  val_bpb 1.9843  199s
+[hyperbolic] seed 0
+    step   175/700  train_ce 2.6783  val_bpb 3.8398  84s
+    step   350/700  train_ce 2.5246  val_bpb 3.5657  165s
+    step   525/700  train_ce 2.4712  val_bpb 3.4277  249s
+    step   700/700  train_ce 2.3784  val_bpb 3.3452  346s
+[hyperbolic] seed 1
+    step   175/700  train_ce 3.1113  val_bpb 4.5151  92s
+    step   350/700  train_ce 2.8808  val_bpb 4.1166  174s
+    step   525/700  train_ce 2.6519  val_bpb 3.7677  259s
+    step   700/700  train_ce 2.6190  val_bpb 3.6864  340s
+[hyperbolic] seed 2

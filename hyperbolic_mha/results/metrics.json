@@ -1,0 +1,496 @@
+{
+  "preset": "fast",
+  "environment": {
+    "torch": "2.13.0+cu130",
+    "device": "cpu",
+    "threads": 4,
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "python": "3.11.15"
+  },
+  "corpus": {
+    "source": "WikiText-2 (https://raw.githubusercontent.com/pytorch/examples/main/word_language_model/data/wikitext-2)",
+    "vocab_size": 256,
+    "tokenizer": "byte-level (utf-8)",
+    "train_bytes": 10797148,
+    "valid_bytes": 1121681,
+    "test_bytes": 1256449
+  },
+  "arms": {
+    "euclidean": {
+      "runs": [
+        {
+          "model_config": {
+            "vocab_size": 256,
+            "d_model": 192,
+            "n_layers": 4,
+            "n_heads": 6,
+            "d_ff": 512,
+            "max_seq_len": 256,
+            "dropout": 0.0,
+            "attention": "euclidean",
+            "attn_residual": true,
+            "n_routed_experts": 4,
+            "n_shared_experts": 1,
+            "top_k": 2,
+            "load_balance_coef": 0.01,
+            "router_z_coef": 0.001,
+            "curvature": 1.0,
+            "learnable_curvature": false,
+            "score_sign": "corrected",
+            "aggregation": "lorentz_centroid",
+            "score_scale": "sqrt_d",
+            "tag": ""
+          },
+          "train_config": {
+            "steps": 700,
+            "batch_size": 16,
+            "seq_len": 256,
+            "lr": 0.003,
+            "min_lr_ratio": 0.1,
+            "warmup_ratio": 0.05,
+            "weight_decay": 0.1,
+            "grad_clip": 1.0,
+            "eval_every": 175,
+            "eval_batches": 12,
+            "seed": 0,
+            "log_every": 100
+          },
+          "params": {
+            "total": 3592900,
+            "trainable": 3592900,
+            "active_per_token": 2413252,
+            "embedding": 49152
+          },
+          "history": [
+            {
+              "step": 175,
+              "tokens": 716800,
+              "train_ce": 2.097869396209717,
+              "train_aux": 0.04149029403924942,
+              "elapsed_s": 50.49411712799997,
+              "val_ce_loss": 1.9499919215838115,
+              "val_bits_per_byte": 2.8132436750425054,
+              "val_perplexity_per_byte": 7.028630800155107,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.714589536190033,
+              "val_expert_entropy_mean": 1.3808419406414032,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.013152746483683586
+            },
+            {
+              "step": 350,
+              "tokens": 1433600,
+              "train_ce": 1.8334318399429321,
+              "train_aux": 0.04172714799642563,
+              "elapsed_s": 99.97928997100007,
+              "val_ce_loss": 1.69284188747406,
+              "val_bits_per_byte": 2.442254596067939,
+              "val_perplexity_per_byte": 5.434904164951259,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.5854229032993317,
+              "val_expert_entropy_mean": 1.3850976526737213,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.019722696393728256
+            },
+            {
+              "step": 525,
+              "tokens": 2150400,
+              "train_ce": 1.642772912979126,
+              "train_aux": 0.041504308581352234,
+              "elapsed_s": 153.09216116900006,
+              "val_ce_loss": 1.5253167152404785,
+              "val_bits_per_byte": 2.2005668608624815,
+              "val_perplexity_per_byte": 4.596599151797687,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.5970830470323563,
+              "val_expert_entropy_mean": 1.3824609816074371,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.01584329642355442
+            },
+            {
+              "step": 700,
+              "tokens": 2867200,
+              "train_ce": 1.5275514125823975,
+              "train_aux": 0.04107087850570679,
+              "elapsed_s": 200.75370299300016,
+              "val_ce_loss": 1.443248411019643,
+              "val_bits_per_byte": 2.0821673253489155,
+              "val_perplexity_per_byte": 4.234428664689987,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.6174318566918373,
+              "val_expert_entropy_mean": 1.3855834603309631,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.02149530127644539
+            }
+          ],
+          "final_val": {
+            "ce_loss": 1.4432483812173207,
+            "bits_per_byte": 2.082167282353253,
+            "perplexity_per_byte": 4.234428538494181,
+            "eval_tokens": 49152
+          },
+          "final_test": {
+            "ce_loss": 1.4509956240653992,
+            "bits_per_byte": 2.093344191190738,
+            "perplexity_per_byte": 4.267361088218043,
+            "eval_tokens": 49152
+          },
+          "best_val_bits_per_byte": 2.0821673253489155,
+          "best_val_step": 700,
+          "attention_stats": {
+            "attn_entropy_mean": 0.6174318566918373,
+            "expert_entropy_mean": 1.3844320476055145,
+            "expert_entropy_max": 1.3862943649291992,
+            "attn_residual_gate_absmean": 0.02149530127644539
+          },
+          "cost": {
+            "wall_s": 200.75376452900014,
+            "train_compute_s": 193.9336241919966,
+            "ms_per_step": 277.0480345599952,
+            "tokens_per_s": 14784.43984092948,
+            "tokens_seen": 2867200,
+            "peak_rss_mb": 1388.4375
+          },
+          "stability": {
+            "nonfinite_grad_steps": 0,
+            "grad_norm_mean": 0.5546265244483948,
+            "grad_norm_max": 28.511445999145508
+          },
+          "seed": 0,
+          "sample": " The history of the city from also Ser <unk> @-@ repeared to reflece who other to the Agei 's were fove a support . Andia leg recognited in Jower <unk> @-@ side , giving the company of the City and Steethet Australian Canalf",
+          "geometry": {
+            "embedding_norm_mean": 1.4625470638275146,
+            "embedding_norm_std": 0.6514944434165955,
+            "euclidean": {
+              "delta": 0.2869783797953488,
+              "delta_rel": 0.1045240203960779,
+              "diameter": 2.7455734931347626,
+              "n_points": 200
+            }
+          },
+          "full_test": {
+            "ce_loss": 1.4364682989773365,
+            "bits_per_byte": 2.072385691328808,
+            "perplexity_per_byte": 4.205815872487285,
+            "eval_tokens": 1256448
+          }
+        },
+        {
+          "model_config": {
+            "vocab_size": 256,
+            "d_model": 192,
+            "n_layers": 4,
+            "n_heads": 6,
+            "d_ff": 512,
+            "max_seq_len": 256,
+            "dropout": 0.0,
+            "attention": "euclidean",
+            "attn_residual": true,
+            "n_routed_experts": 4,
+            "n_shared_experts": 1,
+            "top_k": 2,
+            "load_balance_coef": 0.01,
+            "router_z_coef": 0.001,
+            "curvature": 1.0,
+            "learnable_curvature": false,
+            "score_sign": "corrected",
+            "aggregation": "lorentz_centroid",
+            "score_scale": "sqrt_d",
+            "tag": ""
+          },
+          "train_config": {
+            "steps": 700,
+            "batch_size": 16,
+            "seq_len": 256,
+            "lr": 0.003,
+            "min_lr_ratio": 0.1,
+            "warmup_ratio": 0.05,
+            "weight_decay": 0.1,
+            "grad_clip": 1.0,
+            "eval_every": 175,
+            "eval_batches": 12,
+            "seed": 1,
+            "log_every": 100
+          },
+          "params": {
+            "total": 3592900,
+            "trainable": 3592900,
+            "active_per_token": 2413252,
+            "embedding": 49152
+          },
+          "history": [
+            {
+              "step": 175,
+              "tokens": 716800,
+              "train_ce": 1.9962117671966553,
+              "train_aux": 0.04172235727310181,
+              "elapsed_s": 49.512812964999966,
+              "val_ce_loss": 1.9247535467147827,
+              "val_bits_per_byte": 2.776832396778861,
+              "val_perplexity_per_byte": 6.85345940016091,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.4708456993103027,
+              "val_expert_entropy_mean": 1.3800170123577118,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.015282729640603065
+            },
+            {
+              "step": 350,
+              "tokens": 1433600,
+              "train_ce": 1.7452006340026855,
+              "train_aux": 0.04140550270676613,
+              "elapsed_s": 97.01627688500002,
+              "val_ce_loss": 1.6478993197282155,
+              "val_bits_per_byte": 2.377416176456193,
+              "val_perplexity_per_byte": 5.196053108171012,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.0495793670415878,
+              "val_expert_entropy_mean": 1.3836442530155182,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.03382816165685654
+            },
+            {
+              "step": 525,
+              "tokens": 2150400,
+              "train_ce": 1.5797700881958008,
+              "train_aux": 0.04123217612504959,
+              "elapsed_s": 143.93468056100005,
+              "val_ce_loss": 1.4928406576315563,
+              "val_bits_per_byte": 2.153713813602465,
+              "val_perplexity_per_byte": 4.449717707421873,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.0446848422288895,
+              "val_expert_entropy_mean": 1.382841169834137,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.032049037516117096
+            },
+            {
+              "step": 700,
+              "tokens": 2867200,
+              "train_ce": 1.5433343648910522,
+              "train_aux": 0.041105128824710846,
+              "elapsed_s": 191.00217879799993,
+              "val_ce_loss": 1.4149315357208252,
+              "val_bits_per_byte": 2.04131470978184,
+              "val_perplexity_per_byte": 4.116204643342136,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.0317436307668686,
+              "val_expert_entropy_mean": 1.3855475783348083,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.03479379415512085
+            }
+          ],
+          "final_val": {
+            "ce_loss": 1.4149315158526103,
+            "bits_per_byte": 2.041314681118065,
+            "perplexity_per_byte": 4.116204561560498,
+            "eval_tokens": 49152
+          },
+          "final_test": {
+            "ce_loss": 1.4211264153321583,
+            "bits_per_byte": 2.0502520318760142,
+            "perplexity_per_byte": 4.14178318174502,
+            "eval_tokens": 49152
+          },
+          "best_val_bits_per_byte": 2.04131470978184,
+          "best_val_step": 700,
+          "attention_stats": {
+            "attn_entropy_mean": 1.0317436307668686,
+            "expert_entropy_mean": 1.384816288948059,
+            "expert_entropy_max": 1.3862943649291992,
+            "attn_residual_gate_absmean": 0.03479379415512085
+          },
+          "cost": {
+            "wall_s": 191.00223546000007,
+            "train_compute_s": 183.68539075400258,
+            "ms_per_step": 262.40770107714656,
+            "tokens_per_s": 15609.297986250016,
+            "tokens_seen": 2867200,
+            "peak_rss_mb": 1427.6875
+          },
+          "stability": {
+            "nonfinite_grad_steps": 0,
+            "grad_norm_mean": 0.5650744438171387,
+            "grad_norm_max": 7.745210647583008
+          },
+          "seed": 1,
+          "sample": " The history of the city reached in 2009 , and a name <unk> ( 1 in ) she should than amage the the South North 's Degroid , and Halabaria and the glow curround both home and the rest that the not acclosing community issed . ",
+          "geometry": {
+            "embedding_norm_mean": 1.3760077953338623,
+            "embedding_norm_std": 0.5893130898475647,
+            "euclidean": {
+              "delta": 0.2530888625186418,
+              "delta_rel": 0.09658841207971025,
+              "diameter": 2.6202818440557705,
+              "n_points": 200
+            }
+          },
+          "full_test": {
+            "ce_loss": 1.410611464030974,
+            "bits_per_byte": 2.0350821637786067,
+            "perplexity_per_byte": 4.098460699344154,
+            "eval_tokens": 1256448
+          }
+        },
+        {
+          "model_config": {
+            "vocab_size": 256,
+            "d_model": 192,
+            "n_layers": 4,
+            "n_heads": 6,
+            "d_ff": 512,
+            "max_seq_len": 256,
+            "dropout": 0.0,
+            "attention": "euclidean",
+            "attn_residual": true,
+            "n_routed_experts": 4,
+            "n_shared_experts": 1,
+            "top_k": 2,
+            "load_balance_coef": 0.01,
+            "router_z_coef": 0.001,
+            "curvature": 1.0,
+            "learnable_curvature": false,
+            "score_sign": "corrected",
+            "aggregation": "lorentz_centroid",
+            "score_scale": "sqrt_d",
+            "tag": ""
+          },
+          "train_config": {
+            "steps": 700,
+            "batch_size": 16,
+            "seq_len": 256,
+            "lr": 0.003,
+            "min_lr_ratio": 0.1,
+            "warmup_ratio": 0.05,
+            "weight_decay": 0.1,
+            "grad_clip": 1.0,
+            "eval_every": 175,
+            "eval_batches": 12,
+            "seed": 2,
+            "log_every": 100
+          },
+          "params": {
+            "total": 3592900,
+            "trainable": 3592900,
+            "active_per_token": 2413252,
+            "embedding": 49152
+          },
+          "history": [
+            {
+              "step": 175,
+              "tokens": 716800,
+              "train_ce": 1.9739497900009155,
+              "train_aux": 0.041656963527202606,
+              "elapsed_s": 48.180055233000076,
+              "val_ce_loss": 1.8551267584164937,
+              "val_bits_per_byte": 2.6763821745878937,
+              "val_perplexity_per_byte": 6.392508503521956,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.5641685724258423,
+              "val_expert_entropy_mean": 1.3792008459568024,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.029062017798423767
+            },
+            {
+              "step": 350,
+              "tokens": 1433600,
+              "train_ce": 1.7024785280227661,
+              "train_aux": 0.041562631726264954,
+              "elapsed_s": 95.67276350300017,
+              "val_ce_loss": 1.595510224501292,
+              "val_bits_per_byte": 2.3018346885756507,
+              "val_perplexity_per_byte": 4.930844267964858,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.08809794485569,
+              "val_expert_entropy_mean": 1.3845914006233215,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.029055632650852203
+            },
+            {
+              "step": 525,
+              "tokens": 2150400,
+              "train_ce": 1.5508846044540405,
+              "train_aux": 0.04118332639336586,
+              "elapsed_s": 146.23531883300006,
+              "val_ce_loss": 1.4421749114990234,
+              "val_bits_per_byte": 2.0806185929141208,
+              "val_perplexity_per_byte": 4.2298854465558895,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.0579147636890411,
+              "val_expert_entropy_mean": 1.3843203485012054,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.026653585955500603
+            },
+            {
+              "step": 700,
+              "tokens": 2867200,
+              "train_ce": 1.4609895944595337,
+              "train_aux": 0.04092561826109886,
+              "elapsed_s": 198.94873880900013,
+              "val_ce_loss": 1.3754173815250397,
+              "val_bits_per_byte": 1.984307835478658,
+              "val_perplexity_per_byte": 3.9567278434244657,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.086293175816536,
+              "val_expert_entropy_mean": 1.3855808079242706,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_attn_residual_gate_absmean": 0.026378680020570755
+            }
+          ],
+          "final_val": {
+            "ce_loss": 1.3754173914591472,
+            "bits_per_byte": 1.9843078498105458,
+            "perplexity_per_byte": 3.956727882731026,
+            "eval_tokens": 49152
+          },
+          "final_test": {
+            "ce_loss": 1.386615405480067,
+            "bits_per_byte": 2.000463169106332,
+            "perplexity_per_byte": 4.00128438360173,
+            "eval_tokens": 49152
+          },
+          "best_val_bits_per_byte": 1.984307835478658,
+          "best_val_step": 700,
+          "attention_stats": {
+            "attn_entropy_mean": 1.086293175816536,
+            "expert_entropy_mean": 1.384518414735794,
+            "expert_entropy_max": 1.3862943649291992,
+            "attn_residual_gate_absmean": 0.026378680020570755
+          },
+          "cost": {
+            "wall_s": 198.9488309200001,
+            "train_compute_s": 191.2907106000041,
+            "ms_per_step": 273.27244371429157,
+            "tokens_per_s": 14988.704840954983,
+            "tokens_seen": 2867200,
+            "peak_rss_mb": 1427.6875
+          },
+          "stability": {
+            "nonfinite_grad_steps": 0,
+            "grad_norm_mean": 0.6095417141914368,
+            "grad_norm_max": 8.514293670654297
+          },
+          "seed": 2,
+          "sample": " The history of the city of the <unk> a serious to the suspecked . The prove the power , the other but \" that for \" he reconvention of the simpling while he front some that gun to the bosop . A player , Goss <unk> the side o",
+          "geometry": {
+            "embedding_norm_mean": 1.448373556137085,
+            "embedding_norm_std": 0.6343384981155396,
+            "euclidean": {
+              "delta": 0.26542308514646806,
+              "delta_rel": 0.09721607601896465,
+              "diameter": 2.730238619121904,
+              "n_points": 200
+            }
+          },
+          "full_test": {
+            "ce_loss": 1.3752568773652056,
+            "bits_per_byte": 1.9840762769232236,
+            "perplexity_per_byte": 3.9560928231093295,
+            "eval_tokens": 1256448
+          }
+        }
+      ]
+    }
+  },
+  "ablations": {}
+}

@@ -490,7 +490,643 @@
           }
         }
       ]
+    },
+    "hyperbolic": {
+      "runs": [
+        {
+          "model_config": {
+            "vocab_size": 256,
+            "d_model": 192,
+            "n_layers": 4,
+            "n_heads": 6,
+            "d_ff": 512,
+            "max_seq_len": 256,
+            "dropout": 0.0,
+            "attention": "hyperbolic",
+            "attn_residual": true,
+            "n_routed_experts": 4,
+            "n_shared_experts": 1,
+            "top_k": 2,
+            "load_balance_coef": 0.01,
+            "router_z_coef": 0.001,
+            "curvature": 1.0,
+            "learnable_curvature": false,
+            "score_sign": "corrected",
+            "aggregation": "lorentz_centroid",
+            "score_scale": "sqrt_d",
+            "tag": ""
+          },
+          "train_config": {
+            "steps": 700,
+            "batch_size": 16,
+            "seq_len": 256,
+            "lr": 0.003,
+            "min_lr_ratio": 0.1,
+            "warmup_ratio": 0.05,
+            "weight_decay": 0.1,
+            "grad_clip": 1.0,
+            "eval_every": 175,
+            "eval_batches": 12,
+            "seed": 0,
+            "log_every": 100
+          },
+          "params": {
+            "total": 3592924,
+            "trainable": 3592900,
+            "active_per_token": 2413276,
+            "embedding": 49152
+          },
+          "history": [
+            {
+              "step": 175,
+              "tokens": 716800,
+              "train_ce": 2.678318977355957,
+              "train_aux": 0.05030614137649536,
+              "elapsed_s": 83.66372720899994,
+              "val_ce_loss": 2.661517083644867,
+              "val_bits_per_byte": 3.839757497815706,
+              "val_perplexity_per_byte": 14.317994225134735,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.4520697435364127,
+              "val_expert_entropy_mean": 1.2429782152175903,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 3.5801207423210144,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.06349185109138489
+            },
+            {
+              "step": 350,
+              "tokens": 1433600,
+              "train_ce": 2.52463960647583,
+              "train_aux": 0.04198160022497177,
+              "elapsed_s": 164.79834625900003,
+              "val_ce_loss": 2.471524735291799,
+              "val_bits_per_byte": 3.5656564790398866,
+              "val_perplexity_per_byte": 11.840486703100623,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.5074627790600061,
+              "val_expert_entropy_mean": 1.3519615232944489,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 5.9130523800849915,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.10591604560613632
+            },
+            {
+              "step": 525,
+              "tokens": 2150400,
+              "train_ce": 2.4711766242980957,
+              "train_aux": 0.04174596816301346,
+              "elapsed_s": 248.547209156,
+              "val_ce_loss": 2.3759001096089682,
+              "val_bits_per_byte": 3.4276993057804033,
+              "val_perplexity_per_byte": 10.760694632879277,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.6550159528851509,
+              "val_expert_entropy_mean": 1.3702622056007385,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 5.553390204906464,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.12825709581375122
+            },
+            {
+              "step": 700,
+              "tokens": 2867200,
+              "train_ce": 2.3783838748931885,
+              "train_aux": 0.0411035530269146,
+              "elapsed_s": 345.9966519200002,
+              "val_ce_loss": 2.3187228043874106,
+              "val_bits_per_byte": 3.3452098910858674,
+              "val_perplexity_per_byte": 10.162686275387921,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.4955348875373602,
+              "val_expert_entropy_mean": 1.3782859444618225,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 5.871604859828949,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.13158221542835236
+            }
+          ],
+          "final_val": {
+            "ce_loss": 2.3187228043874106,
+            "bits_per_byte": 3.3452098910858674,
+            "perplexity_per_byte": 10.162686275387921,
+            "eval_tokens": 49152
+          },
+          "final_test": {
+            "ce_loss": 2.3167490561803183,
+            "bits_per_byte": 3.342362374335532,
+            "perplexity_per_byte": 10.142647473852334,
+            "eval_tokens": 49152
+          },
+          "best_val_bits_per_byte": 3.3452098910858674,
+          "best_val_step": 700,
+          "attention_stats": {
+            "attn_entropy_mean": 0.4955348875373602,
+            "expert_entropy_mean": 1.3822104334831238,
+            "expert_entropy_max": 1.3862943649291992,
+            "manifold_radius_mean": 5.871604859828949,
+            "curvature_mean": 1.0,
+            "attn_residual_gate_absmean": 0.13158221542835236
+          },
+          "cost": {
+            "wall_s": 345.9967279020002,
+            "train_compute_s": 337.313349307997,
+            "ms_per_step": 481.8762132971385,
+            "tokens_per_s": 8500.108299544327,
+            "tokens_seen": 2867200,
+            "peak_rss_mb": 1768.09765625
+          },
+          "stability": {
+            "nonfinite_grad_steps": 0,
+            "grad_norm_mean": 10.069916725158691,
+            "grad_norm_max": 1056.604736328125
+          },
+          "seed": 0,
+          "sample": " The history of the city fepre leng , t ty ates wr t t celor rthe t tederofont the ppongeigelereth fove a tin <unk> rn , . we min sce sunintindso f rir @ it se , oninite they bof ppan son r theistat tenthe . as cloful lmerif",
+          "geometry": {
+            "embedding_norm_mean": 1.3135004043579102,
+            "embedding_norm_std": 0.46187037229537964,
+            "euclidean": {
+              "delta": 0.2528127156033485,
+              "delta_rel": 0.11061750583671126,
+              "diameter": 2.2854675097858346,
+              "n_points": 200
+            },
+            "lorentz": {
+              "delta": 0.23824600306083699,
+              "delta_rel": 0.09880417585837475,
+              "diameter": 2.4112948768717755,
+              "n_points": 200
+            }
+          },
+          "full_test": {
+            "ce_loss": 2.288931472960195,
+            "bits_per_byte": 3.302230084974344,
+            "perplexity_per_byte": 9.864391678592327,
+            "eval_tokens": 1256448
+          }
+        },
+        {
+          "model_config": {
+            "vocab_size": 256,
+            "d_model": 192,
+            "n_layers": 4,
+            "n_heads": 6,
+            "d_ff": 512,
+            "max_seq_len": 256,
+            "dropout": 0.0,
+            "attention": "hyperbolic",
+            "attn_residual": true,
+            "n_routed_experts": 4,
+            "n_shared_experts": 1,
+            "top_k": 2,
+            "load_balance_coef": 0.01,
+            "router_z_coef": 0.001,
+            "curvature": 1.0,
+            "learnable_curvature": false,
+            "score_sign": "corrected",
+            "aggregation": "lorentz_centroid",
+            "score_scale": "sqrt_d",
+            "tag": ""
+          },
+          "train_config": {
+            "steps": 700,
+            "batch_size": 16,
+            "seq_len": 256,
+            "lr": 0.003,
+            "min_lr_ratio": 0.1,
+            "warmup_ratio": 0.05,
+            "weight_decay": 0.1,
+            "grad_clip": 1.0,
+            "eval_every": 175,
+            "eval_batches": 12,
+            "seed": 1,
+            "log_every": 100
+          },
+          "params": {
+            "total": 3592924,
+            "trainable": 3592900,
+            "active_per_token": 2413276,
+            "embedding": 49152
+          },
+          "history": [
+            {
+              "step": 175,
+              "tokens": 716800,
+              "train_ce": 3.111250400543213,
+              "train_aux": 0.057093244045972824,
+              "elapsed_s": 91.8433815010003,
+              "val_ce_loss": 3.1296501755714417,
+              "val_bits_per_byte": 4.515130788014193,
+              "val_perplexity_per_byte": 22.86597906508132,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.4664278025738895,
+              "val_expert_entropy_mean": 1.1587419509887695,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 7.107331156730652,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.03218333423137665
+            },
+            {
+              "step": 350,
+              "tokens": 1433600,
+              "train_ce": 2.880805015563965,
+              "train_aux": 0.04612474516034126,
+              "elapsed_s": 173.54056663400024,
+              "val_ce_loss": 2.8534012039502463,
+              "val_bits_per_byte": 4.116587766605618,
+              "val_perplexity_per_byte": 17.346681220075986,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.7044901847839355,
+              "val_expert_entropy_mean": 1.320644587278366,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 8.499766111373901,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.04773630201816559
+            },
+            {
+              "step": 525,
+              "tokens": 2150400,
+              "train_ce": 2.6519477367401123,
+              "train_aux": 0.04216718673706055,
+              "elapsed_s": 258.86211254,
+              "val_ce_loss": 2.6115499337514243,
+              "val_bits_per_byte": 3.7676701384570808,
+              "val_perplexity_per_byte": 13.62014482263934,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.49817636609077454,
+              "val_expert_entropy_mean": 1.3727408051490784,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 9.630323648452759,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.05020218342542648
+            },
+            {
+              "step": 700,
+              "tokens": 2867200,
+              "train_ce": 2.6189634799957275,
+              "train_aux": 0.042782582342624664,
+              "elapsed_s": 340.09537334000015,
+              "val_ce_loss": 2.555231193701426,
+              "val_bits_per_byte": 3.6864193714778337,
+              "val_perplexity_per_byte": 12.874275764947521,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.335211168974638,
+              "val_expert_entropy_mean": 1.370725393295288,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 11.07611870765686,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.05383060872554779
+            }
+          ],
+          "final_val": {
+            "ce_loss": 2.555231193701426,
+            "bits_per_byte": 3.6864193714778337,
+            "perplexity_per_byte": 12.874275764947521,
+            "eval_tokens": 49152
+          },
+          "final_test": {
+            "ce_loss": 2.542013466358185,
+            "bits_per_byte": 3.6673502217879173,
+            "perplexity_per_byte": 12.705226781014828,
+            "eval_tokens": 49152
+          },
+          "best_val_bits_per_byte": 3.6864193714778337,
+          "best_val_step": 700,
+          "attention_stats": {
+            "attn_entropy_mean": 0.335211168974638,
+            "expert_entropy_mean": 1.3727604150772095,
+            "expert_entropy_max": 1.3862943649291992,
+            "manifold_radius_mean": 11.07611870765686,
+            "curvature_mean": 1.0,
+            "attn_residual_gate_absmean": 0.05383060872554779
+          },
+          "cost": {
+            "wall_s": 340.0954558780004,
+            "train_compute_s": 331.50918580000234,
+            "ms_per_step": 473.5845511428605,
+            "tokens_per_s": 8648.930777229702,
+            "tokens_seen": 2867200,
+            "peak_rss_mb": 1801.48046875
+          },
+          "stability": {
+            "nonfinite_grad_steps": 0,
+            "grad_norm_mean": 20.341567993164062,
+            "grad_norm_max": 3051.234619140625
+          },
+          "seed": 1,
+          "sample": " The history of the citysl ae apana i Ind med tar , 10 a isong ,ina rs wonsal man amund we tutethh Sole <urog hes <uginin the tt ta barigin airer Al fthured . srothe omean , thungt . te telu\n beshacif and l Sd f torfifbed to",
+          "geometry": {
+            "embedding_norm_mean": 1.189565896987915,
+            "embedding_norm_std": 0.41830816864967346,
+            "euclidean": {
+              "delta": 0.2265217789034002,
+              "delta_rel": 0.10650591306681434,
+              "diameter": 2.1268469738510793,
+              "n_points": 200
+            },
+            "lorentz": {
+              "delta": 0.2151149971265197,
+              "delta_rel": 0.09644055072596806,
+              "diameter": 2.23054509236224,
+              "n_points": 200
+            }
+          },
+          "full_test": {
+            "ce_loss": 2.5258402593172753,
+            "bits_per_byte": 3.6440172161947264,
+            "perplexity_per_byte": 12.501395265477584,
+            "eval_tokens": 1256448
+          }
+        },
+        {
+          "model_config": {
+            "vocab_size": 256,
+            "d_model": 192,
+            "n_layers": 4,
+            "n_heads": 6,
+            "d_ff": 512,
+            "max_seq_len": 256,
+            "dropout": 0.0,
+            "attention": "hyperbolic",
+            "attn_residual": true,
+            "n_routed_experts": 4,
+            "n_shared_experts": 1,
+            "top_k": 2,
+            "load_balance_coef": 0.01,
+            "router_z_coef": 0.001,
+            "curvature": 1.0,
+            "learnable_curvature": false,
+            "score_sign": "corrected",
+            "aggregation": "lorentz_centroid",
+            "score_scale": "sqrt_d",
+            "tag": ""
+          },
+          "train_config": {
+            "steps": 700,
+            "batch_size": 16,
+            "seq_len": 256,
+            "lr": 0.003,
+            "min_lr_ratio": 0.1,
+            "warmup_ratio": 0.05,
+            "weight_decay": 0.1,
+            "grad_clip": 1.0,
+            "eval_every": 175,
+            "eval_batches": 12,
+            "seed": 2,
+            "log_every": 100
+          },
+          "params": {
+            "total": 3592924,
+            "trainable": 3592900,
+            "active_per_token": 2413276,
+            "embedding": 49152
+          },
+          "history": [
+            {
+              "step": 175,
+              "tokens": 716800,
+              "train_ce": 2.856243133544922,
+              "train_aux": 0.0497143529355526,
+              "elapsed_s": 84.78216192599984,
+              "val_ce_loss": 2.8780991633733115,
+              "val_bits_per_byte": 4.152219390185351,
+              "val_perplexity_per_byte": 17.780443319379373,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.43446514569222927,
+              "val_expert_entropy_mean": 1.2182377576828003,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 5.797199547290802,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.03643114119768143
+            },
+            {
+              "step": 350,
+              "tokens": 1433600,
+              "train_ce": 2.9222817420959473,
+              "train_aux": 0.04499572888016701,
+              "elapsed_s": 156.39785036700005,
+              "val_ce_loss": 2.773568272590637,
+              "val_bits_per_byte": 4.001413192433481,
+              "val_perplexity_per_byte": 16.01568048427182,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 1.8125223591923714,
+              "val_expert_entropy_mean": 1.3309573829174042,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 6.704617261886597,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.05787256732583046
+            },
+            {
+              "step": 525,
+              "tokens": 2150400,
+              "train_ce": 2.5304629802703857,
+              "train_aux": 0.04124552756547928,
+              "elapsed_s": 228.0449778279999,
+              "val_ce_loss": 2.469266136487325,
+              "val_bits_per_byte": 3.5623980097453143,
+              "val_perplexity_per_byte": 11.813773972015591,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.682451568543911,
+              "val_expert_entropy_mean": 1.3696863651275635,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 7.50441586971283,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.062040336430072784
+            },
+            {
+              "step": 700,
+              "tokens": 2867200,
+              "train_ce": 2.4715099334716797,
+              "train_aux": 0.04186677560210228,
+              "elapsed_s": 297.47396569700004,
+              "val_ce_loss": 2.4436031778653464,
+              "val_bits_per_byte": 3.525374186606847,
+              "val_perplexity_per_byte": 11.514454715396106,
+              "val_eval_tokens": 49152,
+              "val_attn_entropy_mean": 0.403714582324028,
+              "val_expert_entropy_mean": 1.3788086771965027,
+              "val_expert_entropy_max": 1.3862943649291992,
+              "val_manifold_radius_mean": 7.631852865219116,
+              "val_curvature_mean": 1.0,
+              "val_attn_residual_gate_absmean": 0.06337342411279678
+            }
+          ],
+          "final_val": {
+            "ce_loss": 2.4436031778653464,
+            "bits_per_byte": 3.525374186606847,
+            "perplexity_per_byte": 11.514454715396106,
+            "eval_tokens": 49152
+          },
+          "final_test": {
+            "ce_loss": 2.432196875413259,
+            "bits_per_byte": 3.508918370624341,
+            "perplexity_per_byte": 11.383863559316705,
+            "eval_tokens": 49152
+          },
+          "best_val_bits_per_byte": 3.525374186606847,
+          "best_val_step": 700,
+          "attention_stats": {
+            "attn_entropy_mean": 0.403714582324028,
+            "expert_entropy_mean": 1.3733362257480621,
+            "expert_entropy_max": 1.3862943649291992,
+            "manifold_radius_mean": 7.631852865219116,
+            "curvature_mean": 1.0,
+            "attn_residual_gate_absmean": 0.06337342411279678
+          },
+          "cost": {
+            "wall_s": 297.4740433379998,
+            "train_compute_s": 290.8585647099985,
+            "ms_per_step": 415.5122352999978,
+            "tokens_per_s": 9857.71212499364,
+            "tokens_seen": 2867200,
+            "peak_rss_mb": 1801.48046875
+          },
+          "stability": {
+            "nonfinite_grad_steps": 0,
+            "grad_norm_mean": 8.581936836242676,
+            "grad_norm_max": 294.2256164550781
+          },
+          "seed": 2,
+          "sample": " The history of the city icon cin rs f m sr = wheson of fsin wana oun 110 ie the pore is or @ tt b bus \" t aloft Ad @-@-@-@ crofe icor . a stin mape , pn \n med al somiofe <uginan t b thesop . A pe woules ore <us cothexor t o",
+          "geometry": {
+            "embedding_norm_mean": 1.1110965013504028,
+            "embedding_norm_std": 0.33331298828125,
+            "euclidean": {
+              "delta": 0.2527600627768838,
+              "delta_rel": 0.12449785592575545,
+              "diameter": 2.030236271117936,
+              "n_points": 200
+            },
+            "lorentz": {
+              "delta": 0.23449742455799072,
+              "delta_rel": 0.10920597401001247,
+              "diameter": 2.1472948406329033,
+              "n_points": 200
+            }
+          },
+          "full_test": {
+            "ce_loss": 2.4137067450870804,
+            "bits_per_byte": 3.482242751297372,
+            "perplexity_per_byte": 11.175308485522518,
+            "eval_tokens": 1256448
+          }
+        }
+      ]
     }
   },
-  "ablations": {}
+  "ablations": {},
+  "comparison": {
+    "val_bits_per_byte": {
+      "metric_lower_is_better": true,
+      "hyperbolic": {
+        "mean": 3.519001149723516,
+        "std": 0.17069399250318135,
+        "n": 3,
+        "values": [
+          3.3452098910858674,
+          3.6864193714778337,
+          3.525374186606847
+        ]
+      },
+      "euclidean": {
+        "mean": 2.035929937760621,
+        "std": 0.04915143670498669,
+        "n": 3,
+        "values": [
+          2.082167282353253,
+          2.041314681118065,
+          1.9843078498105458
+        ]
+      },
+      "difference": {
+        "diff": 1.483071211962895,
+        "ci_low": 1.3228974870703087,
+        "ci_high": 1.6451046903597688,
+        "ci_level": 0.95,
+        "excludes_zero": true
+      },
+      "welch": {
+        "t": 14.461292206654816,
+        "dof": 2.329397576390851,
+        "p_value": 0.002476021873434181
+      },
+      "cohens_d": 11.807595642530428,
+      "winner": "euclidean"
+    },
+    "test_bits_per_byte": {
+      "metric_lower_is_better": true,
+      "hyperbolic": {
+        "mean": 3.4761633508221474,
+        "std": 0.17097464753456398,
+        "n": 3,
+        "values": [
+          3.302230084974344,
+          3.6440172161947264,
+          3.482242751297372
+        ]
+      },
+      "euclidean": {
+        "mean": 2.0305147106768797,
+        "std": 0.044331528160460154,
+        "n": 3,
+        "values": [
+          2.072385691328808,
+          2.0350821637786067,
+          1.9840762769232236
+        ]
+      },
+      "difference": {
+        "diff": 1.4456486401452677,
+        "ci_low": 1.2841498834808647,
+        "ci_high": 1.606016117639051,
+        "ci_level": 0.95,
+        "excludes_zero": true
+      },
+      "welch": {
+        "t": 14.176293164474382,
+        "dof": 2.2677092878494323,
+        "p_value": 0.002918201801980126
+      },
+      "cohens_d": 11.574894899022429,
+      "winner": "euclidean"
+    },
+    "best_val_bits_per_byte": {
+      "metric_lower_is_better": true,
+      "hyperbolic": {
+        "mean": 3.519001149723516,
+        "std": 0.17069399250318135,
+        "n": 3,
+        "values": [
+          3.3452098910858674,
+          3.6864193714778337,
+          3.525374186606847
+        ]
+      },
+      "euclidean": {
+        "mean": 2.0359299568698046,
+        "std": 0.04915146602451962,
+        "n": 3,
+        "values": [
+          2.0821673253489155,
+          2.04131470978184,
+          1.984307835478658
+        ]
+      },
+      "difference": {
+        "diff": 1.4830711928537115,
+        "ci_low": 1.322897472738421,
+        "ci_high": 1.645104661695994,
+        "ci_level": 0.95,
+        "excludes_zero": true
+      },
+      "welch": {
+        "t": 14.461291359828115,
+        "dof": 2.329397964005081,
+        "p_value": 0.0024760203562918383
+      },
+      "cohens_d": 11.807594951099322,
+      "winner": "euclidean"
+    }
+  }
 }

@@ -26,3 +26,6 @@
 [hyperbolic] seed 2
     step   175/700  train_ce 2.8562  val_bpb 4.1522  85s
     step   350/700  train_ce 2.9223  val_bpb 4.0014  156s
+    step   525/700  train_ce 2.5305  val_bpb 3.5624  228s
+    step   700/700  train_ce 2.4715  val_bpb 3.5254  297s
+[ablation] curvature_0.25

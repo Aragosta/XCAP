@@ -1,0 +1,4 @@
+identity max |softmax difference| = 4.768e-07
+== arm=keybias seed=0
+   step 250 val 2.0526 hard 3.7148 brown 2.2325 (156s)
+   step 500 val 1.9001 hard 3.4501 brown 2.1374 (326s)

@@ -1,0 +1,60 @@
+[30s] giant component N=132483 <k>=37.88 mean_clustering=0.1628 gamma=3.135 (k_min=195)
+[30s] scale=8000 rep=0: n=5386 <k>=3.24 c=0.1396 gamma=3.366
+/home/user/XCAP/flyattn/scripts/../src/flyattn/s1h2.py:57: RuntimeWarning: overflow encountered in power
+  p = one / (one + d ** b32)
+/home/user/XCAP/flyattn/scripts/../src/flyattn/s1h2.py:99: RuntimeWarning: overflow encountered in power
+  p = one / (one + d ** b32)
+    beta=1.050 c=0.0568 | beta=8.000 c=0.5974 | target c=0.1396
+    beta=4.525 c=0.5474
+    beta=2.788 c=0.4620
+    beta=1.919 c=0.3186
+    beta=1.484 c=0.2045
+    beta=1.267 c=0.1252
+    beta=1.376 c=0.1574
+    beta=1.321 c=0.1495
+    beta=1.294 c=0.1240
+    beta=1.308 c=0.1363
+    beta=1.315 c=0.1416
+[49s]   -> beta=1.315 (converged)
+[49s] scale=8000 rep=1: n=5448 <k>=3.37 c=0.1335 gamma=3.104
+    beta=1.050 c=0.0540 | beta=8.000 c=0.6006 | target c=0.1335
+    beta=4.525 c=0.5665
+    beta=2.788 c=0.4810
+    beta=1.919 c=0.3446
+    beta=1.484 c=0.2186
+    beta=1.267 c=0.1262
+    beta=1.376 c=0.1576
+    beta=1.321 c=0.1581
+    beta=1.294 c=0.1359
+[65s]   -> beta=1.294 (converged)
+[65s] scale=16000 rep=0: n=13195 <k>=5.48 c=0.1293 gamma=3.291
+    beta=1.050 c=0.0632 | beta=8.000 c=0.6883 | target c=0.1293
+    beta=4.525 c=0.6456
+    beta=2.788 c=0.5559
+    beta=1.919 c=0.4045
+    beta=1.484 c=0.2473
+    beta=1.267 c=0.1523
+    beta=1.159 c=0.1008
+    beta=1.213 c=0.1319
+[182s]   -> beta=1.213 (converged)
+[182s] scale=16000 rep=1: n=13454 <k>=5.79 c=0.1368 gamma=3.037
+    beta=1.050 c=0.0686 | beta=8.000 c=0.6980 | target c=0.1368
+    beta=4.525 c=0.6543
+    beta=2.788 c=0.5661
+    beta=1.919 c=0.4155
+    beta=1.484 c=0.2632
+    beta=1.267 c=0.1638
+    beta=1.159 c=0.1137
+    beta=1.213 c=0.1388
+[304s]   -> beta=1.213 (converged)
+[304s] scale=32000 rep=0: n=29629 <k>=9.97 c=0.1510 gamma=3.163
+    beta=1.050 c=0.0747 | beta=8.000 c=0.7476 | target c=0.1510
+    beta=4.525 c=0.7073
+    beta=2.788 c=0.6169
+    beta=1.919 c=0.4636
+    beta=1.484 c=0.2916
+    beta=1.267 c=0.1793
+    beta=1.159 c=0.1235
+    beta=1.213 c=0.1504
+[940s]   -> beta=1.213 (converged)
+[940s] scale=32000 rep=1: n=29595 <k>=10.26 c=0.1575 gamma=3.128

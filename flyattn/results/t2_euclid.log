@@ -1,0 +1,4 @@
+identity max |softmax difference| = 4.768e-07
+== arm=euclid seed=0
+   step 250 val 2.0565 hard 3.7521 brown 2.2377 (157s)
+   step 500 val 1.8972 hard 3.4204 brown 2.1483 (333s)

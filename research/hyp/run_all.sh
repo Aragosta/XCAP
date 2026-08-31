@@ -4,7 +4,11 @@ set -u
 PY=/home/user/XCAP/.venv-hyp/bin/python
 cd /home/user/XCAP/research/hyp
 
-while pgrep -f "train.py --steps" > /dev/null; do sleep 20; done
+# NB: match the interpreter path, not the bare script name. A plain
+# "train.py --steps" pattern also matches this script's own parent,
+# whose command line contains that literal string, so the loop never
+# exits and the whole sweep silently deadlocks.
+while pgrep -f "venv-hyp/bin/python train.py" > /dev/null; do sleep 20; done
 echo "=== training finished ==="
 tail -2 runs/moe.log; tail -2 runs/dense.log
 

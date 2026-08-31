@@ -1,1 +1,29 @@
 training base model...
+   step 500 val 1.9190 (457s)
+   step 1000 val 1.8240 (907s)
+   step 1500 val 1.7633 (1169s)
+   step 2000 val 1.7384 (1434s)
+   step 2500 val 1.7122 (1682s)
+   step 3000 val 1.6872 (1937s)
+   step 3500 val 1.6605 (2191s)
+   step 4000 val 1.6458 (2440s)
+   step 4500 val 1.6255 (2688s)
+   step 5000 val 1.6184 (2936s)
+   step 5500 val 1.6127 (3187s)
+   step 6000 val 1.6131 (3436s)
+W_V/W_O parameter count: 131072
+dense val loss 1.6131 hard 2.9568
+density 1        kept  131072  trained=1.6131  shuffled_w=4.7752  shuffled_mask=1.6131  random_both=5.0433
+density 0.3      kept   39322  trained=2.4434  shuffled_w=4.8758  shuffled_mask=4.9073  random_both=4.9445
+density 0.1      kept   13107  trained=4.7109  shuffled_w=4.9791  shuffled_mask=5.2865  random_both=5.2942
+density 0.05     kept    6554  trained=5.2275  shuffled_w=5.2544  shuffled_mask=5.3262  random_both=5.3439
+density 0.02     kept    2621  trained=4.7461  shuffled_w=5.2871  shuffled_mask=5.3080  random_both=5.1415
+density 0.01     kept    1311  trained=5.3143  shuffled_w=5.3691  shuffled_mask=5.3261  random_both=5.3164
+density 0.005    kept     655  trained=5.4595  shuffled_w=5.3483  shuffled_mask=5.3172  random_both=5.2387
+density 0.002    kept     262  trained=5.3528  shuffled_w=5.2771  shuffled_mask=5.2367  random_both=5.3066
+density 0.001    kept     131  trained=5.3153  shuffled_w=5.3320  shuffled_mask=5.1858  random_both=5.1863
+density 0.0005   kept      66  trained=5.2684  shuffled_w=5.2049  shuffled_mask=5.2828  random_both=5.3152
+density 0.0002   kept      26  trained=5.3028  shuffled_w=5.3028  shuffled_mask=5.2349  random_both=5.2983
+density 0.0001   kept      13  trained=5.3028  shuffled_w=5.3028  shuffled_mask=5.3028  random_both=5.3028
+
+lowest density at which trained beats shuffled_w by >3sd: 0.1

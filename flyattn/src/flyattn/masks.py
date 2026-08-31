@@ -40,8 +40,11 @@ def s1_mask(seq_len, beta, mean_degree, gamma, rng, calib_iters=6,
     """
     n = seq_len
     kt = powerlaw_degrees(n, mean_degree, gamma, rng)
-    theta = (np.arange(n) / n * 2 * np.pi if positions_as_angles
-             else np.sort(rng.random(n) * 2 * np.pi))
+    # positions_as_angles=False assigns the same evenly spaced angles to
+    # sequence positions through a random permutation: identical topology and
+    # degree sequence, sequence locality destroyed.
+    order = np.arange(n) if positions_as_angles else rng.permutation(n)
+    theta = order / n * 2 * np.pi
     R = n / (2 * np.pi)
     kappa, mu = s1h2.calibrate_kappa(kt, theta, beta, R, iters=calib_iters)
     u, v = s1h2.sample_edges(kappa, theta, beta, mu, R, rng)

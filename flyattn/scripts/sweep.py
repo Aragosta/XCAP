@@ -29,8 +29,12 @@ MEAN_DEGREE = 20.0          # ~8.5% causal density at T=256
 GAMMA = 3.1                 # from M1's fit to FlyWire
 FLY_BETA = 1.30             # from M1
 
+# "bX" places node i at angle 2*pi*i/T, so the S1 geometry is sequence locality.
+# "bXr" keeps the same beta but assigns angles to positions at random: same
+# topology, locality destroyed. That separates "geometry as a locality prior"
+# from "geometry as topology", which is otherwise confounded on sequence data.
 STRUCTURES = ["dense", "config", "b1.05", "b1.30", "b1.60", "b2.00", "b3.00",
-              "b5.00", "b8.00", "window"]
+              "b5.00", "b8.00", "window", "b1.30r", "b4.00r"]
 
 
 def build_mask(name, rng):
@@ -41,7 +45,10 @@ def build_mask(name, rng):
     if name == "window":
         return MK.window_mask(SEQ, int(MEAN_DEGREE / 2))
     if name.startswith("b"):
-        return MK.s1_mask(SEQ, float(name[1:]), MEAN_DEGREE, GAMMA, rng)
+        rand_angles = name.endswith("r")
+        beta = float(name[1:-1] if rand_angles else name[1:])
+        return MK.s1_mask(SEQ, beta, MEAN_DEGREE, GAMMA, rng,
+                          positions_as_angles=not rand_angles)
     raise ValueError(name)
 
 

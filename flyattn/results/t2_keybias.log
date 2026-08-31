@@ -2,3 +2,29 @@ identity max |softmax difference| = 4.768e-07
 == arm=keybias seed=0
    step 250 val 2.0526 hard 3.7148 brown 2.2325 (156s)
    step 500 val 1.9001 hard 3.4501 brown 2.1374 (326s)
+   step 750 val 1.8547 hard 3.4025 brown 2.0940 (585s)
+   step 1000 val 1.8090 hard 3.2549 brown 2.0718 (903s)
+   step 1250 val 1.7702 hard 3.2745 brown 2.0510 (1219s)
+   step 1500 val 1.7539 hard 3.2067 brown 2.0280 (1454s)
+   step 1750 val 1.7436 hard 3.2159 brown 2.0327 (1682s)
+   step 2000 val 1.7270 hard 3.1802 brown 2.0151 (1913s)
+   step 2250 val 1.7103 hard 3.1379 brown 2.0078 (2142s)
+   step 2500 val 1.6997 hard 3.1121 brown 2.0047 (2373s)
+   step 2750 val 1.6908 hard 3.1055 brown 2.0014 (2603s)
+   step 3000 val 1.6881 hard 3.1013 brown 2.0012 (2833s)
+== arm=keybias seed=1
+   step 250 val 2.0646 hard 3.6909 brown 2.2297 (210s)
+   step 500 val 1.8812 hard 3.3916 brown 2.1448 (440s)
+   step 750 val 1.8420 hard 3.3852 brown 2.0895 (668s)
+   step 1000 val 1.7982 hard 3.2892 brown 2.0673 (903s)
+   step 1250 val 1.7729 hard 3.2693 brown 2.0574 (1182s)
+   step 1500 val 1.7339 hard 3.1872 brown 2.0373 (1426s)
+   step 1750 val 1.7113 hard 3.1604 brown 2.0159 (1669s)
+   step 2000 val 1.6955 hard 3.1165 brown 2.0055 (1909s)
+   step 2250 val 1.6831 hard 3.0938 brown 2.0041 (2152s)
+   step 2500 val 1.6719 hard 3.0736 brown 1.9959 (2396s)
+   step 2750 val 1.6669 hard 3.0662 brown 1.9963 (2634s)
+   step 3000 val 1.6657 hard 3.0622 brown 1.9927 (2822s)
+
+arm                  val      val_hard      ood_book     ood_brown   ood_reuters
+keybias      1.6769±0.011   3.0817±0.020   1.6660±0.006   1.9970±0.004   2.4718±0.032

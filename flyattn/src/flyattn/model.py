@@ -42,6 +42,8 @@ class Config:
     d_ff: int = 256
     dropout: float = 0.0
     attn_kind: str = "qk"
+    share_k: bool = False       # T9: one K (and Q) bundle read by every head
+    share_q: bool = False
     qk_init_gain: float = 1.0
     aux_loss_weight: float = 0.01
     tie_embeddings: bool = True
@@ -70,8 +72,14 @@ class Attention(nn.Module):
     def __init__(self, cfg: Config):
         super().__init__()
         self.cfg = cfg
-        self.q = nn.Linear(cfg.d_model, cfg.d_model, bias=False)
-        self.k = nn.Linear(cfg.d_model, cfg.d_model, bias=False)
+        # T9: 21 MBON types read the same ~2000-Kenyon-cell bundle. Sharing K
+        # across heads tests whether head diversity belongs in the values rather
+        # than the keys; the freed parameters are not given back, so the shared
+        # arms are strictly smaller.
+        self.q = nn.Linear(cfg.d_model, cfg.d_head if cfg.share_q else cfg.d_model,
+                           bias=False)
+        self.k = nn.Linear(cfg.d_model, cfg.d_head if cfg.share_k else cfg.d_model,
+                           bias=False)
         self.v = nn.Linear(cfg.d_model, cfg.d_model, bias=False)
         self.o = nn.Linear(cfg.d_model, cfg.d_model, bias=False)
         std = cfg.d_model ** -0.5
@@ -91,8 +99,13 @@ class Attention(nn.Module):
     def forward(self, x, cos, sin, causal):
         B, T, C = x.shape
         H, D = self.cfg.n_heads, self.cfg.d_head
-        q = apply_rope(self.q(x).view(B, T, H, D).transpose(1, 2), cos, sin)
-        k = apply_rope(self.k(x).view(B, T, H, D).transpose(1, 2), cos, sin)
+        hq, hk = (1 if self.cfg.share_q else H), (1 if self.cfg.share_k else H)
+        q = apply_rope(self.q(x).view(B, T, hq, D).transpose(1, 2), cos, sin)
+        k = apply_rope(self.k(x).view(B, T, hk, D).transpose(1, 2), cos, sin)
+        if hq == 1:
+            q = q.expand(B, H, T, D)
+        if hk == 1:
+            k = k.expand(B, H, T, D)
         v = self.v(x).view(B, T, H, D).transpose(1, 2)
 
         if self.cfg.attn_kind == "qk":

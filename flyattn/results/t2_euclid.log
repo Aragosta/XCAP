@@ -2,3 +2,29 @@ identity max |softmax difference| = 4.768e-07
 == arm=euclid seed=0
    step 250 val 2.0565 hard 3.7521 brown 2.2377 (157s)
    step 500 val 1.8972 hard 3.4204 brown 2.1483 (333s)
+   step 750 val 1.8524 hard 3.3844 brown 2.0871 (604s)
+   step 1000 val 1.8013 hard 3.2416 brown 2.0717 (930s)
+   step 1250 val 1.7665 hard 3.2531 brown 2.0542 (1254s)
+   step 1500 val 1.7527 hard 3.2003 brown 2.0400 (1488s)
+   step 1750 val 1.7412 hard 3.1983 brown 2.0300 (1725s)
+   step 2000 val 1.7196 hard 3.1663 brown 2.0204 (1962s)
+   step 2250 val 1.7045 hard 3.1280 brown 2.0023 (2206s)
+   step 2500 val 1.6960 hard 3.1048 brown 2.0051 (2444s)
+   step 2750 val 1.6879 hard 3.0987 brown 2.0037 (2681s)
+   step 3000 val 1.6853 hard 3.0933 brown 2.0021 (2922s)
+== arm=euclid seed=1
+   step 250 val 2.0593 hard 3.7013 brown 2.2279 (218s)
+   step 500 val 1.8803 hard 3.4113 brown 2.1541 (454s)
+   step 750 val 1.8489 hard 3.4142 brown 2.0871 (696s)
+   step 1000 val 1.7984 hard 3.2791 brown 2.0714 (939s)
+   step 1250 val 1.7746 hard 3.2337 brown 2.0479 (1230s)
+   step 1500 val 1.7412 hard 3.1999 brown 2.0271 (1481s)
+   step 1750 val 1.7197 hard 3.1836 brown 2.0119 (1736s)
+   step 2000 val 1.7021 hard 3.1121 brown 1.9979 (1988s)
+   step 2250 val 1.6912 hard 3.1125 brown 1.9892 (2235s)
+   step 2500 val 1.6798 hard 3.0824 brown 1.9865 (2480s)
+   step 2750 val 1.6758 hard 3.0793 brown 1.9865 (2695s)
+   step 3000 val 1.6748 hard 3.0777 brown 1.9831 (2871s)
+
+arm                  val      val_hard      ood_book     ood_brown   ood_reuters
+euclid       1.6800±0.005   3.0855±0.008   1.6665±0.006   1.9926±0.010   2.4520±0.023

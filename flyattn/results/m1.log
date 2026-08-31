@@ -58,3 +58,18 @@
     beta=1.213 c=0.1504
 [940s]   -> beta=1.213 (converged)
 [940s] scale=32000 rep=1: n=29595 <k>=10.26 c=0.1575 gamma=3.128
+    beta=1.050 c=0.0776 | beta=8.000 c=0.7500 | target c=0.1575
+    beta=4.525 c=0.7112
+    beta=2.788 c=0.6247
+    beta=1.919 c=0.4661
+    beta=1.484 c=0.2942
+    beta=1.267 c=0.1851
+    beta=1.159 c=0.1272
+    beta=1.213 c=0.1524
+    beta=1.240 c=0.1681
+    beta=1.226 c=0.1617
+    beta=1.220 c=0.1579
+[1781s]   -> beta=1.220 (converged)
+
+beta estimates: [1.315, 1.294, 1.213, 1.213, 1.213, 1.22]  mean=1.245 sd=0.043
+phase: quasi-geometric (1<beta<2)

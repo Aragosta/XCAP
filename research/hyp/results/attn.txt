@@ -1,0 +1,7 @@
+softmax MHA (trained)              val loss 2.3807  ppl  10.81
+softmax + temperature              val loss 2.3807  ppl  10.81  delta +0.0000   {'beta': 1.0}
+euclid dist kernel (flat)          val loss 3.0608  ppl  21.34  delta +0.6800   {'beta': 1, 'squared': False}
+hyperbolic (curving)               val loss 3.2336  ppl  25.37  delta +0.8529   {'beta': 8, 'scale': 0.6}
+linear elu (lifting)               val loss 3.8287  ppl  46.00  delta +1.4480   {'scale': 2.0}
+linear RFF D=64 (lifting)          val loss 3.7271  ppl  41.56  delta +1.3464   {'W': 'W', 'scale': 0.25}
+linear RFF D=256 (lifting)         val loss 3.7613  ppl  43.01  delta +1.3806   {'W': 'W', 'scale': 0.25}

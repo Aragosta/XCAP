@@ -1,9 +1,9 @@
 {
- "softmax": 2.8506255745887756,
- "softmax + temperature": 2.84733510017395,
- "euclid dist kernel (flat)": 3.190262198448181,
- "hyperbolic (curving)": 3.163429081439972,
- "linear elu (lifting)": 3.6605294942855835,
- "linear RFF D=64 (lifting)": 3.549550950527191,
- "linear RFF D=256 (lifting)": 3.571794331073761
+ "softmax": 2.3807137409845986,
+ "softmax + temperature": 2.3807137409845986,
+ "euclid dist kernel (flat)": 3.0607566833496094,
+ "hyperbolic (curving)": 3.2336368560791016,
+ "linear elu (lifting)": 3.828725496927897,
+ "linear RFF D=64 (lifting)": 3.7271341482798257,
+ "linear RFF D=256 (lifting)": 3.7613312800725303
 }

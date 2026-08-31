@@ -149,11 +149,15 @@ def main():
         "softmax + temperature": (attn_softmax_temp,
                                   [dict(beta=b) for b in (0.5, 0.8, 1.0, 1.25, 2.0)]),
         "euclid dist kernel (flat)": (attn_dist_kernel,
-                                      [dict(beta=b, squared=sq) for b in (0.25, 0.5, 1, 2, 4, 8)
+                                      [dict(beta=b, squared=sq)
+                                       for b in (0.25, 0.5, 1, 2, 4, 8, 16, 32, 64)
                                        for sq in (False, True)]),
+        # Wide grid on purpose: the best setting ran to the edge of a narrower
+        # one, and a hypothesis under test should not lose on grid resolution.
         "hyperbolic (curving)": (attn_hyperbolic,
-                                 [dict(beta=b, scale=s) for b in (0.5, 1, 2, 4, 8)
-                                  for s in (0.3, 0.6, 0.9)]),
+                                 [dict(beta=b, scale=s)
+                                  for b in (0.5, 1, 2, 4, 8, 16, 32, 64, 128)
+                                  for s in (0.2, 0.4, 0.6, 0.8, 0.95)]),
         "linear elu (lifting)": (attn_linear_elu,
                                  [dict(scale=s) for s in (0.25, 0.5, 1.0, 2.0)]),
     }

@@ -1,0 +1,4 @@
+data/
+runs/*/
+runs/*.log
+results/smoke*.json

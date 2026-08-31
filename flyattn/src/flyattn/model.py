@@ -42,7 +42,7 @@ attn_mask_fn
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import torch
 import torch.nn as nn
@@ -67,6 +67,7 @@ class Config:
     aux_loss_weight: float = 0.01
     tie_embeddings: bool = True
     use_rope: bool = True
+    layer_kinds: tuple = ()     # per-layer attn_kind override; () = all attn_kind
     extras: dict = field(default_factory=dict)
 
     @property
@@ -235,7 +236,10 @@ class Transformer(nn.Module):
         self.cfg = cfg
         self.emb = nn.Embedding(cfg.vocab_size, cfg.d_model)
         nn.init.normal_(self.emb.weight, std=0.02)
-        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg.n_layers)])
+        kinds = cfg.layer_kinds or (cfg.attn_kind,) * cfg.n_layers
+        assert len(kinds) == cfg.n_layers, (kinds, cfg.n_layers)
+        self.blocks = nn.ModuleList(
+            [Block(replace(cfg, attn_kind=k)) for k in kinds])
         self.norm = nn.RMSNorm(cfg.d_model)
         self.head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=False)
         if cfg.tie_embeddings:

@@ -13,6 +13,25 @@ attn_kind
                 only that bias term, with g learnable per head.
     "euclid"    the literal -g||q-k||^2 form, kept to verify the identity
                 numerically rather than on the whiteboard.
+    "lorentz_ip" the Lorentzian inner product of *unconstrained* vectors used
+                directly as the score. The indefinite signature is then just a
+                fixed diagonal sign flip J, and softmax(<q,k>_L) = softmax((Jq).k),
+                so W_Q absorbs it exactly: the same function class as "qk". This
+                arm exists to make that concrete. (It is only exactly equivalent
+                with use_rope=False; RoPE does not commute with J, which changes
+                the score by an artefact of the rotation, not by geometry.)
+    "hyperbolic" q and k are lifted to the hyperboloid, x -> (sqrt(1+||sx||^2), sx),
+                and scored by -g * d_H(q,k)^2 with d_H = arccosh(-<q,k>_L). Here
+                the signature does buy something: the lift couples ||q|| to ||k||
+                multiplicatively, so unlike the Euclidean case the score does NOT
+                decompose into (dot product + per-key bias). This is the only
+                distance-attention variant T2's algebra does not kill.
+    "hyperbolic_d" the same with -g * d_H instead of -g * d_H^2.
+    "hyperbolic_ip" the Lorentzian inner product of the *lifted* vectors,
+                g * <q,k>_L = -g * cosh(d_H). Monotone in hyperbolic distance and,
+                like "hyperbolic", not decomposable into dot product + key bias.
+                RoPE is norm-preserving, so the lifted time coordinate is
+                unaffected by it and the geometry stays well defined.
 qk_init_gain
     T4. multiplies the standard init std of W_Q and W_K, sweeping the
     rank-collapse / entropy-collapse transition.
@@ -47,6 +66,7 @@ class Config:
     qk_init_gain: float = 1.0
     aux_loss_weight: float = 0.01
     tie_embeddings: bool = True
+    use_rope: bool = True
     extras: dict = field(default_factory=dict)
 
     @property
@@ -87,11 +107,17 @@ class Attention(nn.Module):
             nn.init.normal_(w, std=std * cfg.qk_init_gain)
         for w in (self.v.weight, self.o.weight):
             nn.init.normal_(w, std=std)
-        if cfg.attn_kind in ("keybias", "euclid"):
+        if cfg.attn_kind in ("keybias", "euclid", "hyperbolic", "hyperbolic_d",
+                             "hyperbolic_ip"):
             # log-gamma, one per head; init at the value that reproduces the
             # standard 1/sqrt(d) temperature
             self.log_gamma = nn.Parameter(
                 torch.full((cfg.n_heads,), math.log(0.5 * cfg.d_head ** -0.5)))
+        if cfg.attn_kind in ("hyperbolic", "hyperbolic_d", "hyperbolic_ip"):
+            # radial scale of the lift, per head: it sets how far up the
+            # hyperboloid typical activations sit, i.e. how curved the geometry
+            # they actually experience is
+            self.log_scale = nn.Parameter(torch.zeros(cfg.n_heads))
         self.last_entropy = None
         self.head_mask = None      # (H,) float, for pruning whole heads
         self.register_buffer("struct_mask", torch.empty(0), persistent=False)
@@ -100,8 +126,10 @@ class Attention(nn.Module):
         B, T, C = x.shape
         H, D = self.cfg.n_heads, self.cfg.d_head
         hq, hk = (1 if self.cfg.share_q else H), (1 if self.cfg.share_k else H)
-        q = apply_rope(self.q(x).view(B, T, hq, D).transpose(1, 2), cos, sin)
-        k = apply_rope(self.k(x).view(B, T, hk, D).transpose(1, 2), cos, sin)
+        q = self.q(x).view(B, T, hq, D).transpose(1, 2)
+        k = self.k(x).view(B, T, hk, D).transpose(1, 2)
+        if self.cfg.use_rope:
+            q, k = apply_rope(q, cos, sin), apply_rope(k, cos, sin)
         if hq == 1:
             q = q.expand(B, H, T, D)
         if hk == 1:
@@ -110,6 +138,23 @@ class Attention(nn.Module):
 
         if self.cfg.attn_kind == "qk":
             att = (q @ k.transpose(-2, -1)) * (D ** -0.5)
+        elif self.cfg.attn_kind == "lorentz_ip":
+            j = torch.ones(D, device=q.device)
+            j[0] = -1.0
+            att = ((q * j) @ k.transpose(-2, -1)) * (D ** -0.5)
+        elif self.cfg.attn_kind in ("hyperbolic", "hyperbolic_d", "hyperbolic_ip"):
+            g = self.log_gamma.exp().view(1, H, 1, 1)
+            s_ = self.log_scale.exp().view(1, H, 1, 1)
+            qs, ks = q * s_, k * s_
+            q0 = (1.0 + (qs * qs).sum(-1)).sqrt()
+            k0 = (1.0 + (ks * ks).sum(-1)).sqrt()
+            # -<q,k>_L = q0 k0 - qs.ks >= 1 on the hyperboloid
+            z = q0[..., None] * k0[:, :, None, :] - qs @ ks.transpose(-2, -1)
+            if self.cfg.attn_kind == "hyperbolic_ip":
+                att = -g * z          # g * <q,k>_L = -g * cosh(d_H)
+            else:
+                d = torch.acosh(z.clamp_min(1.0 + 1e-6))
+                att = -g * (d if self.cfg.attn_kind == "hyperbolic_d" else d * d)
         else:
             g = self.log_gamma.exp().view(1, H, 1, 1)
             if self.cfg.attn_kind == "keybias":

@@ -67,6 +67,8 @@ class Config:
     aux_loss_weight: float = 0.01
     tie_embeddings: bool = True
     use_rope: bool = True
+    row_temp: bool = False      # Test B: per-row logit scale ~ sqrt(log k_i)
+    sigma_reparam: bool = False # Test G: spectral reparameterisation of W_Q, W_K
     layer_kinds: tuple = ()     # per-layer attn_kind override; () = all attn_kind
     extras: dict = field(default_factory=dict)
 
@@ -119,16 +121,48 @@ class Attention(nn.Module):
             # hyperboloid typical activations sit, i.e. how curved the geometry
             # they actually experience is
             self.log_scale = nn.Parameter(torch.zeros(cfg.n_heads))
+        if cfg.sigma_reparam:
+            # Zhai et al. 2023: W -> gamma * W / sigma(W). Spectral normalisation
+            # supplies W / sigma(W); gamma is the learnable scale that replaces
+            # the free growth of the spectral norm that drives entropy collapse.
+            from torch.nn.utils.parametrizations import spectral_norm
+            self.q = spectral_norm(self.q)
+            self.k = spectral_norm(self.k)
+            self.gamma_q = nn.Parameter(torch.ones(1))
+            self.gamma_k = nn.Parameter(torch.ones(1))
+        self._row_scale = None
         self.last_entropy = None
         self.head_mask = None      # (H,) float, for pruning whole heads
         self.register_buffer("struct_mask", torch.empty(0), persistent=False)
+
+    def _row_temperature(self, mask):
+        """Per-row logit scale c_i ~ sqrt(log k_i), normalised to mean 1.
+
+        The softmax over a row with k_i admissible keys concentrates once the
+        logit scale exceeds ~sqrt(log k_i) (the scale of the maximum of k_i
+        roughly-Gaussian logits), so a single global 1/sqrt(d) is critical for
+        at most one value of k_i. Under a causal mask k_i grows with position;
+        under a heavy-tailed structural mask it varies by orders of magnitude.
+        Normalising to mean 1 keeps the *average* temperature fixed, so this
+        arm isolates the heterogeneity correction rather than a global shift.
+        """
+        T = mask.shape[0]
+        if self._row_scale is None or self._row_scale.shape[-1] != T:
+            k = mask.sum(-1).clamp_min(1).float()
+            c = torch.sqrt(torch.log(k + 1.0))
+            c = c / c.mean()
+            self._row_scale = c.view(1, 1, T, 1)
+        return self._row_scale
 
     def forward(self, x, cos, sin, causal):
         B, T, C = x.shape
         H, D = self.cfg.n_heads, self.cfg.d_head
         hq, hk = (1 if self.cfg.share_q else H), (1 if self.cfg.share_k else H)
-        q = self.q(x).view(B, T, hq, D).transpose(1, 2)
-        k = self.k(x).view(B, T, hk, D).transpose(1, 2)
+        qx, kx = self.q(x), self.k(x)
+        if self.cfg.sigma_reparam:
+            qx, kx = qx * self.gamma_q, kx * self.gamma_k
+        q = qx.view(B, T, hq, D).transpose(1, 2)
+        k = kx.view(B, T, hk, D).transpose(1, 2)
         if self.cfg.use_rope:
             q, k = apply_rope(q, cos, sin), apply_rope(k, cos, sin)
         if hq == 1:
@@ -168,6 +202,8 @@ class Attention(nn.Module):
         mask = causal
         if self.struct_mask.numel():
             mask = mask & self.struct_mask[:T, :T]
+        if self.cfg.row_temp:
+            att = att * self._row_temperature(mask)
         att = att.masked_fill(~mask, float("-inf"))
         p = att.softmax(-1)
         with torch.no_grad():

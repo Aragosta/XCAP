@@ -76,19 +76,43 @@ def m3(w):
 
 def t2(w):
     runs = []
-    for p in glob.glob(os.path.join(RES, "t2_keybias*.json")):
-        runs += json.load(open(p))["runs"]
+    for pat in ("t2_keybias*.json", "t2b_hyperbolic*.json", "t2c_depth_*.json"):
+        for p in glob.glob(os.path.join(RES, pat)):
+            runs += json.load(open(p))["runs"]
     if not runs:
         return
-    w("\n## T2 - key-norm bias\n")
+    w("\n## T2 / T2b / T2c - distance attention, hyperbolic attention, and depth\n")
+    w("All arms share one protocol: 128d, 4 layers, 4 heads, top-2 MoE, 3000 "
+      "steps, 2 seeds, byte-level Gutenberg. `hip` = hyperbolic_ip, the score "
+      "-g*cosh(d_H) on hyperboloid-lifted q, k.\n")
     keys = ["val", "val_hard", "ood_book", "ood_brown", "ood_reuters"]
     w("| arm | seeds | " + " | ".join(keys) + " |")
     w("|---" * (len(keys) + 2) + "|")
-    for arm in sorted({r["arm"] for r in runs}):
+    order = ["qk", "keybias", "euclid", "hyperbolic", "hyperbolic_ip",
+             "deep2", "last1", "shallow2"]
+    for arm in sorted({r["arm"] for r in runs}, key=lambda a: order.index(a)
+                      if a in order else 99):
         f = [r["final"] for r in runs if r["arm"] == arm]
         cells = " | ".join(f"{np.mean([x[k] for x in f]):.4f} ± "
                            f"{np.std([x[k] for x in f]):.4f}" for k in keys)
-        w(f"| {arm} | {len(f)} | {cells} |")
+        lk = next((r.get("layer_kinds") for r in runs
+                   if r["arm"] == arm and r.get("layer_kinds")), None)
+        name = arm + (" (" + " / ".join(
+            "hip" if k == "hyperbolic_ip" else k for k in lk) + ")" if lk else "")
+        w(f"| {name} | {len(f)} | {cells} |")
+    scales = [(r["arm"], r["seed"], [None if v is None else
+                                     round(float(np.mean(v)), 3)
+                                     for v in r["learned_scale"]])
+              for r in runs if r.get("learned_scale")]
+    if scales:
+        w("\nLearned radial scale s per layer (mean over heads). s = 1 is flat; "
+          "larger s means the head sits higher on the hyperboloid and experiences "
+          "more curvature.\n")
+        w("| arm | seed | layer 0 | layer 1 | layer 2 | layer 3 |")
+        w("|---|---|---|---|---|---|")
+        for a, sd, v in scales:
+            w(f"| {a} | {sd} | " + " | ".join("-" if x is None else f"{x:.3f}"
+                                              for x in v) + " |")
 
 
 def t1(w):

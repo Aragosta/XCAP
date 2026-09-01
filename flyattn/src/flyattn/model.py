@@ -67,6 +67,7 @@ class Config:
     aux_loss_weight: float = 0.01
     tie_embeddings: bool = True
     use_rope: bool = True
+    use_moe: bool = True        # False -> a dense SwiGLU FFN at matched active width
     row_temp: bool = False      # Test B: per-row logit scale ~ sqrt(log k_i)
     sigma_reparam: bool = False # Test G: spectral reparameterisation of W_Q, W_K
     layer_kinds: tuple = ()     # per-layer attn_kind override; () = all attn_kind
@@ -253,13 +254,29 @@ class MoE(nn.Module):
         return out.view(B, T, C)
 
 
+class FFN(nn.Module):
+    """Dense SwiGLU feed-forward at the MoE's *active* width, so a plain-MHA
+    model and a MoE-MHA model run the same FLOPs per token."""
+
+    def __init__(self, cfg: Config):
+        super().__init__()
+        f = cfg.d_ff * cfg.top_k
+        self.w1 = nn.Linear(cfg.d_model, f, bias=False)
+        self.w3 = nn.Linear(cfg.d_model, f, bias=False)
+        self.w2 = nn.Linear(f, cfg.d_model, bias=False)
+        self.aux = torch.tensor(0.0)
+
+    def forward(self, x):
+        return self.w2(F.silu(self.w1(x)) * self.w3(x))
+
+
 class Block(nn.Module):
     def __init__(self, cfg: Config):
         super().__init__()
         self.n1 = nn.RMSNorm(cfg.d_model)
         self.attn = Attention(cfg)
         self.n2 = nn.RMSNorm(cfg.d_model)
-        self.moe = MoE(cfg)
+        self.moe = MoE(cfg) if cfg.use_moe else FFN(cfg)
 
     def forward(self, x, cos, sin, causal):
         x = x + self.attn(self.n1(x), cos, sin, causal)

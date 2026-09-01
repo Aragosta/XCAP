@@ -114,3 +114,57 @@ def ensure_reachable(mask: torch.Tensor) -> torch.Tensor:
     mask = mask.clone()
     mask.fill_diagonal_(True)
     return mask
+
+
+def powerlaw_span_mask(seq_len, beta, mean_degree, rng, local_band=True):
+    """Linear-distance span mask: P(i ~ j) = min(1, c |i-j|^-beta).
+
+    This is exactly the long-range percolation model whose graph-distance phase
+    transition at beta = 2d is measured in scripts/a2_diameter_scaling.py, so
+    theory and experiment act on the same object.
+
+    It differs from `s1_mask` in one decisive way: distance is linear, not
+    angular. On a circle the first and last positions are neighbours, which
+    inserts a diameter-2 shortcut at *every* beta and destroys the very phase
+    transition the sweep is meant to cross.
+
+    c is solved so the realised mean degree matches `mean_degree` at every beta,
+    keeping density fixed across the sweep.
+    """
+    n = seq_len
+    s = np.arange(1, n)
+    w = (n - s) / n
+    lo, hi = 1e-12, 1e12
+    for _ in range(200):
+        c = np.sqrt(lo * hi)
+        k = 2.0 * np.sum(w * np.minimum(1.0, c * s ** (-beta)))
+        if k < mean_degree:
+            lo = c
+        else:
+            hi = c
+    c = np.sqrt(lo * hi)
+    m = np.zeros((n, n), bool)
+    if local_band:
+        i = np.arange(n - 1)
+        m[i, i + 1] = True
+        m[i + 1, i] = True
+    for d in range(2 if local_band else 1, n):
+        p = min(1.0, c * d ** (-beta))
+        cnt = rng.binomial(n - d, p)
+        if cnt:
+            i = rng.choice(n - d, size=cnt, replace=False)
+            m[i, i + d] = True
+            m[i + d, i] = True
+    np.fill_diagonal(m, True)
+    return torch.from_numpy(m)
+
+
+def graph_distance(mask):
+    """Mean and max causal graph distance - the number of layers two positions
+    need before they can influence one another."""
+    import scipy.sparse as sp
+    from scipy.sparse.csgraph import shortest_path
+    a = sp.csr_matrix(mask.numpy().astype(np.int8))
+    d = shortest_path(a, method="D", unweighted=True)
+    d = d[np.isfinite(d)]
+    return float(d.mean()), float(d.max())

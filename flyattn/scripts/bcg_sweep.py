@@ -29,7 +29,8 @@ from flyattn.model import Config  # noqa: E402
 from flyattn import textdata, train as T, masks as MK  # noqa: E402
 
 RES = os.path.join(os.path.dirname(__file__), "..", "results")
-SEQ, MEAN_DEGREE, GAMMA = 256, 20.0, 3.1
+SEQ = int(os.environ.get("FLYATTN_SEQ", 256))
+MEAN_DEGREE, GAMMA = 20.0, 3.1
 HIP = "hyperbolic_ip"
 
 
@@ -52,7 +53,7 @@ def build_mask(spec, rng):
 
 def cells(test):
     if test == "b":
-        for st in ("dense", "window", "b2.00g2.1", "b2.00g3.1", "b2.00g10"):
+        for st in ("dense", "window", "b2.00g2.1", "b2.00g3.1"):
             for rt in (False, True):
                 for sd in (0, 1):
                     yield dict(structure=st, row_temp=rt, seed=sd, n_layers=3,
@@ -65,10 +66,13 @@ def cells(test):
                     yield dict(structure=st, row_temp=False, seed=sd, n_layers=4,
                                layer_kinds=lk, sigma_reparam=False, place=place)
     elif test == "g":
-        for st in ("dense", "config", "b1.30", "b2.00", "b8.00", "window"):
-            for sd in (0, 1):
-                yield dict(structure=st, row_temp=False, seed=sd, n_layers=3,
-                           layer_kinds=None, sigma_reparam=True)
+        # self-contained: both arms run here at the same budget, rather than
+        # reusing the T3 sweep as the off arm at a different step count
+        for st in ("config", "b2.00", "b8.00", "window"):
+            for sr in (False, True):
+                for sd in (0, 1):
+                    yield dict(structure=st, row_temp=False, seed=sd, n_layers=3,
+                               layer_kinds=None, sigma_reparam=sr)
     else:
         raise ValueError(test)
 
@@ -89,7 +93,7 @@ def main():
 
     corp = textdata.load_corpora()
     lp = textdata.bigram_logprobs(corp["train"])
-    ev = {k: T.make_eval_batches(corp[k], 16, SEQ, 12, seed=5)
+    ev = {k: T.make_eval_batches(corp[k], 16, SEQ, 8, seed=5)
           for k in ("val", "ood_book", "ood_brown", "ood_reuters")}
     hard = T.hard_mask_for(ev["val"], lp)
 
@@ -112,7 +116,7 @@ def main():
               f"{MK.density(mask) if mask is not None else 1.0:.4f}", flush=True)
         res, _ = T.train_run(
             cfg, corp["train"], ev, steps=a.steps, batch_size=16, seed=c["seed"],
-            hard=hard, threads=a.threads, eval_every=500, struct_mask=mask,
+            hard=hard, threads=a.threads, eval_every=300, struct_mask=mask,
             progress=lambda r: print(f"   step {r['step']} val {r['val']:.4f} "
                                      f"hard {r.get('val_hard',0):.4f} "
                                      f"({r['elapsed']:.0f}s)", flush=True))
